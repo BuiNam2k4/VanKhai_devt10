@@ -1,0 +1,4 @@
+spring:
+  sql:
+    init:
+      data-locations: classpath:db/data.sql,classpath:db/sample-data.sql
