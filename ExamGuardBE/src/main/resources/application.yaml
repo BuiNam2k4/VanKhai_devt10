@@ -7,8 +7,21 @@ spring:
     url: "jdbc:mysql://localhost:3306/exam_guard"
     username: root
     password: root
+    hikari:
+      connection-init-sql: "SET time_zone = '+00:00'"
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
-  # jpa tự tạo bảng trong database
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+      encoding: UTF-8
+  # SQL tạo các bảng chưa tồn tại; Hibernate kiểm tra mapping entity.
