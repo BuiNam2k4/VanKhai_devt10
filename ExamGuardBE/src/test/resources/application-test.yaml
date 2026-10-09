@@ -13,3 +13,7 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+
+app:
+  security:
+    jwt-secret: test-only-secret-at-least-32-bytes-long-never-use-in-production

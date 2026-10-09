@@ -7,6 +7,7 @@ Backend dùng Java 25, Spring Boot, Spring Data JPA, Lombok và MySQL 8.0.16 tr�
 
 ```powershell
 cd ExamGuardBE
+$env:JWT_SECRET = [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -19,3 +20,9 @@ Spring Boot tạo các bảng còn thiếu từ `db/schema.sql`, thêm ba role t
 ```
 
 Script `db/sample-data.sql` có thể chạy lại tuần tự mà không nhân đôi dữ liệu. Tài khoản mẫu gồm `demo_admin01`, `demo_teacher01..03`, `demo_student01..20`, dùng mật khẩu `Demo@123` được lưu bằng BCrypt.
+
+## Task 4 Xác thực và phân quyền
+
+Đã có API đăng ký, đăng nhập, thông tin tài khoản, BCrypt và JWT với ba vai trò ADMIN/TEACHER/STUDENT. Khởi chạy frontend bằng `npm run dev` trong `ExamGuardFE`, mở `http://localhost:5173`. Đăng ký công khai tạo tài khoản STUDENT.
+
+Backend yêu cầu biến môi trường `JWT_SECRET` tối thiểu 32 byte; lệnh phía trên sinh khóa ngẫu nhiên cho local. Xem [hướng dẫn xác thực](docs/auth-security.md) để biết API, ma trận quyền, cấu hình triển khai và lệnh kiểm thử H2/MySQL.

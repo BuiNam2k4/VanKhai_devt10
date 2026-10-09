@@ -25,3 +25,10 @@ spring:
       data-locations: classpath:db/data.sql
       encoding: UTF-8
   # SQL tạo các bảng chưa tồn tại; Hibernate kiểm tra mapping entity.
+
+app:
+  security:
+    jwt-secret: ${JWT_SECRET}
+    issuer: examguard
+    access-token-ttl: 30m
+    allowed-origins: http://localhost:5173,http://127.0.0.1:5173
