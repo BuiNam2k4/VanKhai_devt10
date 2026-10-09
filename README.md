@@ -19,3 +19,9 @@ Spring Boot tạo các bảng còn thiếu từ `db/schema.sql`, thêm ba role t
 ```
 
 Script `db/sample-data.sql` có thể chạy lại tuần tự mà không nhân đôi dữ liệu. Tài khoản mẫu gồm `demo_admin01`, `demo_teacher01..03`, `demo_student01..20`, dùng mật khẩu `Demo@123` được lưu bằng BCrypt.
+
+## Task 4 và Task 5
+
+Backend đã có đăng ký, đăng nhập, BCrypt, JWT HS512 và phân quyền ADMIN/TEACHER/STUDENT. Phần quản trị hỗ trợ CRUD người dùng, môn học, lớp học; quản lý sinh viên trong lớp; tìm kiếm, sắp xếp và phân trang. Frontend cung cấp màn hình xác thực và giao diện quản trị tương ứng.
+
+Khởi động frontend trong `ExamGuardFE` bằng `npm run dev`, sau đó mở `http://localhost:5173`. Xem [hướng dẫn xác thực và quản lý học vụ](docs/auth-core-management.md) để biết API, quy tắc phân trang và cách kiểm thử MySQL Docker.

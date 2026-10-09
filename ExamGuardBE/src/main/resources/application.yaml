@@ -25,3 +25,12 @@ spring:
       data-locations: classpath:db/data.sql
       encoding: UTF-8
   # SQL tạo các bảng chưa tồn tại; Hibernate kiểm tra mapping entity.
+
+jwt:
+  signer-key: ${JWT_SIGNER_KEY:examguard-local-development-signing-key-change-before-production-2026}
+  issuer: examguard
+  expiration-seconds: 3600
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
