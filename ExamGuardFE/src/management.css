@@ -1,4 +1,5 @@
 :root { --ink: #18352d; --muted: #66766f; --green: #185b45; --green-dark: #104735; --cream: #f5f7f2; --line: #dce4da; --danger: #a74438; color: var(--ink); background: var(--cream); color-scheme: light; font: 16px/1.5 'Segoe UI', Arial, sans-serif; }
+@media (max-width: 600px) { .app-shell .topbar { flex-wrap: wrap; gap: 12px; } .app-shell .account { margin-left: auto; gap: 12px; } }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; background: var(--cream); }
 #root { width: 100%; max-width: none; min-height: 100vh; margin: 0; border: 0; text-align: left; display: block; }
