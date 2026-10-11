@@ -29,3 +29,7 @@ Khởi động frontend trong `ExamGuardFE` bằng `npm run dev`, sau đó mở 
 ## Task 6
 
 Ngân hàng câu hỏi hỗ trợ CRUD, trắc nghiệm một đáp án và tự luận, phân loại môn học/độ khó, tìm kiếm và phân trang. Giảng viên quản lý câu hỏi của mình, admin quản lý toàn bộ; sinh viên không truy cập đáp án đúng. Xem [hướng dẫn ngân hàng câu hỏi](docs/question-bank.md) để biết API, validation, bảo vệ dữ liệu đã gán vào đề và cách kiểm thử.
+
+## Task 7
+
+Giảng viên và admin có thể tạo, xem, sửa, xóa bài thi nháp; cấu hình lịch mở/đóng, thời lượng, số lượt thi, hiển thị kết quả, cờ trộn câu/đáp án và lớp được giao. Danh sách có tìm kiếm, lọc, sắp xếp và phân trang theo hợp đồng hiện có. Backend kiểm tra điều kiện công bố và khóa cấu hình sau khi công bố. Xem [hướng dẫn quản lý bài thi](docs/exam-management.md) để biết API và các bước kiểm thử. Phần gán câu hỏi và thực hiện trộn đề thuộc Task 8.

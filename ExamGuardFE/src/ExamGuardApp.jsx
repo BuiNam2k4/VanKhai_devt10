@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, clearSession, getSession, saveSession } from './api'
 import AuthScreen from './AuthScreen'
 import AdminDashboard from './AdminDashboard'
-import QuestionBank from './QuestionBank'
+import TeacherDashboard from './TeacherDashboard'
 import './management.css'
 
 const roleLabels = { ADMIN: 'Quản trị viên', TEACHER: 'Giảng viên', STUDENT: 'Sinh viên' }
@@ -48,7 +48,7 @@ export default function ExamGuardApp() {
     {user.roles.includes('ADMIN')
       ? <AdminDashboard token={session.token} />
       : user.roles.includes('TEACHER')
-        ? <div className="admin-layout"><aside className="sidebar"><div><span className="side-label">GIẢNG VIÊN</span><button className="active"><span className="nav-dot" />Ngân hàng câu hỏi</button></div><p>Soạn và phân loại câu hỏi cho các bài kiểm tra.</p></aside><main className="workspace"><QuestionBank token={session.token} /></main></div>
+        ? <TeacherDashboard token={session.token} />
       : <main className="simple-dashboard"><span className="eyebrow">EXAMGUARD</span><h1>Xin chào, {user.fullName}</h1><p>Tài khoản của bạn đã đăng nhập với vai trò {user.roles.map(role => roleLabels[role]).join(', ')}.</p><div className="empty-panel">Các chức năng nghiệp vụ dành cho vai trò này sẽ được bổ sung ở các task tiếp theo.</div></main>}
   </div>
 }
