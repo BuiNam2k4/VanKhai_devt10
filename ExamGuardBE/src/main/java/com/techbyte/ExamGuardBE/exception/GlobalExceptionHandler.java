@@ -9,6 +9,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -48,6 +49,12 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiResponse<Void>> handleConstraint(DataIntegrityViolationException exception) {
         return ResponseEntity.status(409).body(ApiResponse.<Void>builder()
                 .status(409).message(ErrorCode.RESOURCE_IN_USE.getMessage()).build());
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    ResponseEntity<ApiResponse<Void>> handleUnsupportedMethod(HttpRequestMethodNotSupportedException exception) {
+        return ResponseEntity.status(405).body(ApiResponse.<Void>builder()
+                .status(405).message("Phương thức không được hỗ trợ cho chức năng này").build());
     }
 
     @ExceptionHandler(Exception.class)

@@ -25,3 +25,7 @@ Script `db/sample-data.sql` có thể chạy lại tuần tự mà không nhân 
 Backend đã có đăng ký, đăng nhập, BCrypt, JWT HS512 và phân quyền ADMIN/TEACHER/STUDENT. Phần quản trị hỗ trợ CRUD người dùng, môn học, lớp học; quản lý sinh viên trong lớp; tìm kiếm, sắp xếp và phân trang. Frontend cung cấp màn hình xác thực và giao diện quản trị tương ứng.
 
 Khởi động frontend trong `ExamGuardFE` bằng `npm run dev`, sau đó mở `http://localhost:5173`. Xem [hướng dẫn xác thực và quản lý học vụ](docs/auth-core-management.md) để biết API, quy tắc phân trang và cách kiểm thử MySQL Docker.
+
+## Task 6
+
+Ngân hàng câu hỏi hỗ trợ CRUD, trắc nghiệm một đáp án và tự luận, phân loại môn học/độ khó, tìm kiếm và phân trang. Giảng viên quản lý câu hỏi của mình, admin quản lý toàn bộ; sinh viên không truy cập đáp án đúng. Xem [hướng dẫn ngân hàng câu hỏi](docs/question-bank.md) để biết API, validation, bảo vệ dữ liệu đã gán vào đề và cách kiểm thử.

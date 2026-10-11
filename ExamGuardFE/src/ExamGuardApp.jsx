@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, clearSession, getSession, saveSession } from './api'
 import AuthScreen from './AuthScreen'
 import AdminDashboard from './AdminDashboard'
+import QuestionBank from './QuestionBank'
 import './management.css'
 
 const roleLabels = { ADMIN: 'Quản trị viên', TEACHER: 'Giảng viên', STUDENT: 'Sinh viên' }
@@ -17,8 +18,8 @@ export default function ExamGuardApp() {
     const controller = new AbortController()
     api('/auth/me', { token: session.token, signal: controller.signal })
       .then(setUser)
-      .catch(() => logout('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'))
-      .finally(() => setLoading(false))
+      .catch(() => { if (!controller.signal.aborted) logout('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.') })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
   }, [session])
 
@@ -46,6 +47,8 @@ export default function ExamGuardApp() {
     </header>
     {user.roles.includes('ADMIN')
       ? <AdminDashboard token={session.token} />
+      : user.roles.includes('TEACHER')
+        ? <div className="admin-layout"><aside className="sidebar"><div><span className="side-label">GIẢNG VIÊN</span><button className="active"><span className="nav-dot" />Ngân hàng câu hỏi</button></div><p>Soạn và phân loại câu hỏi cho các bài kiểm tra.</p></aside><main className="workspace"><QuestionBank token={session.token} /></main></div>
       : <main className="simple-dashboard"><span className="eyebrow">EXAMGUARD</span><h1>Xin chào, {user.fullName}</h1><p>Tài khoản của bạn đã đăng nhập với vai trò {user.roles.map(role => roleLabels[role]).join(', ')}.</p><div className="empty-panel">Các chức năng nghiệp vụ dành cho vai trò này sẽ được bổ sung ở các task tiếp theo.</div></main>}
   </div>
 }
