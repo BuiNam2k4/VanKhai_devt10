@@ -1,0 +1,20 @@
+.exam-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; padding: 22px; background: #fff; border: 1px solid var(--line); border-radius: 13px; margin-bottom: 22px; }
+.exam-filter-actions { grid-column: 1 / -1; display: flex; gap: 10px; }
+.exam-table { overflow-x: auto; }
+.exam-table table { min-width: 900px; }
+.exam-table td:first-child { width: 28%; }
+.exam-title { white-space: pre-wrap; overflow-wrap: anywhere; }
+.exam-status-draft { background: #f4f1e5; border-color: #e5dcc2; }
+.exam-status-published { background: #e5f4e8; border-color: #bedcc7; color: #225c3c; }
+.exam-status-closed { background: #eceff1; border-color: #d5dce0; color: #59656d; }
+.modal.exam-modal { width: min(780px, 95vw); }
+.exam-form-note { font-size: 12px; line-height: 1.65; color: var(--muted); }
+.exam-class-picker { margin-top: 22px; }
+.exam-class-picker h3 { font-size: 15px; margin-bottom: 12px; }
+.exam-class-picker p { color: var(--muted); font-size: 13px; }
+.exam-class-list { max-height: 200px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.exam-class-list .check { display: flex; padding: 6px 0; overflow-wrap: anywhere; }
+.exam-class-list input { flex-shrink: 0; }
+.exam-table .table-state .secondary { display: block; margin: 15px auto 0; }
+.exam-shuffle { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 650px) { .exam-filters { grid-template-columns: 1fr; padding: 16px; } .exam-management .page-heading { flex-direction: column; align-items: flex-start; } }

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
 import QuestionBank from './QuestionBank'
+import ExamManagement from './ExamManagement'
 
 const tabs = {
   users: { label: 'Người dùng', title: 'Quản lý người dùng', collection: 'users', sort: 'id:desc' },
   subjects: { label: 'Môn học', title: 'Quản lý môn học', collection: 'subjects', sort: 'code:asc' },
   classes: { label: 'Lớp học', title: 'Quản lý lớp học', collection: 'classes', sort: 'code:asc' },
   questions: { label: 'Ngân hàng câu hỏi' },
+  exams: { label: 'Quản lý bài thi' },
 }
 const roleLabels = { ADMIN: 'Quản trị viên', TEACHER: 'Giảng viên', STUDENT: 'Sinh viên' }
 
@@ -23,7 +25,7 @@ export default function AdminDashboard({ token }) {
   const [memberClass, setMemberClass] = useState(null)
 
   const load = useCallback(async () => {
-    if (tab === 'questions') return
+    if (tab === 'questions' || tab === 'exams') return
     try {
       const query = new URLSearchParams({ page, size: 10, sortBy: tabs[tab].sort })
       if (appliedKeyword) query.set('keyword', appliedKeyword)
@@ -68,7 +70,7 @@ export default function AdminDashboard({ token }) {
   return <div className="admin-layout">
     <aside className="sidebar"><div><span className="side-label">ĐIỀU HÀNH</span>{Object.entries(tabs).map(([key, value]) => <button key={key} className={tab === key ? 'active' : ''} onClick={() => switchTab(key)}><span className="nav-dot" />{value.label}</button>)}</div><p>Dữ liệu được phân trang và tìm kiếm trực tiếp từ máy chủ.</p></aside>
     <main className="workspace">
-      {tab === 'questions' ? <QuestionBank token={token} isAdmin /> : memberClass ? <MembersPanel token={token} schoolClass={memberClass} onBack={() => { setMemberClass(null); load() }} /> : <>
+      {tab === 'questions' ? <QuestionBank token={token} isAdmin /> : tab === 'exams' ? <ExamManagement token={token} isAdmin /> : memberClass ? <MembersPanel token={token} schoolClass={memberClass} onBack={() => { setMemberClass(null); load() }} /> : <>
         <div className="page-heading"><div><span className="eyebrow">QUẢN TRỊ HỌC VỤ</span><h1>{tabs[tab].title}</h1><p>{result ? `${result.totalElements} bản ghi` : 'Đang tải dữ liệu…'}</p></div><button className="primary" onClick={() => setEditor({ type: tab, item: null })}>+ Thêm mới</button></div>
         {notice && <div className={`notice ${notice.type}`} role="status">{notice.text}<button aria-label="Đóng" onClick={() => setNotice(null)}>×</button></div>}
         <form className="toolbar" onSubmit={event => { event.preventDefault(); setPage(1); setAppliedKeyword(keyword.trim()) }}><label><span>Tìm kiếm</span><input value={keyword} onChange={event => setKeyword(event.target.value)} placeholder={`Tìm trong ${tabs[tab].label.toLowerCase()}…`} /></label><button className="secondary" type="submit">Tìm kiếm</button>{appliedKeyword && <button className="text-button" type="button" onClick={() => { setKeyword(''); setAppliedKeyword(''); setPage(1) }}>Xóa bộ lọc</button>}</form>
