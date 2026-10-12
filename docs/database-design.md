@@ -22,6 +22,8 @@ Hibernate dùng `ddl-auto: validate` để phát hiện entity không khớp sch
 
 `src/main/resources/db/sample-data.sql` thêm **24 bản ghi cho mỗi bảng ngoài `roles`**, gồm cả bảng nối; `roles` giữ 3 vai trò theo nghiệp vụ. Trên database trống, tổng cộng có 363 bản ghi. Script đã được nhập trực tiếp vào database `exam_guard` để dùng ngay.
 
+Để thực hành Task 8, profile demo còn chạy `db/sample-exam-data.sql`: thêm 216 câu hỏi, 576 lựa chọn trắc nghiệm, 24 đề nháp, 24 liên kết lớp và 240 liên kết câu hỏi trong đề. Mỗi đề thực hành có 10 câu, tổng 10 điểm; mỗi giảng viên có 8 đề. Tổng ngân hàng mẫu là 240 câu hỏi và tổng đề mẫu là 48. Các đề/ảnh chụp/đáp án lịch sử ban đầu được giữ nguyên. Vì có bộ bổ sung, số bản ghi hiện tại không còn cố định 24 ở tất cả bảng. Chi tiết tài khoản và cách thử đề nằm trong README.
+
 Bộ mẫu có 1 admin, 3 giảng viên, 20 sinh viên, 24 môn, 24 lớp, 24 câu hỏi và 24 bài kiểm tra. Có 12 câu trắc nghiệm, mỗi câu có 2 lựa chọn và đúng 1 lựa chọn đúng, cùng 12 câu tự luận. Có 24 phiên thi chia đều thành `IN_PROGRESS`, `SUBMITTED`, `AUTO_SUBMITTED`; mỗi phiên có câu hỏi snapshot, đáp án và một sự kiện bất thường. Điểm kết quả khớp điểm đáp án và risk score khớp trọng số sự kiện.
 
 Tài khoản mẫu: `demo_admin01`, `demo_teacher01` đến `demo_teacher03`, `demo_student01` đến `demo_student20`. Mật khẩu dùng cho bộ mẫu là `Demo@123`, lưu bằng BCrypt. Đây là tài khoản giả phục vụ phát triển; API đăng nhập thuộc task sau.

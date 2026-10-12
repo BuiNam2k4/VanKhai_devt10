@@ -1,4 +1,4 @@
 spring:
   sql:
     init:
-      data-locations: classpath:db/data.sql,classpath:db/sample-data.sql
+      data-locations: classpath:db/data.sql,classpath:db/sample-data.sql,classpath:db/sample-exam-data.sql

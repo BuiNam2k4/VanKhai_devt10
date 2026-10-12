@@ -1,0 +1,30 @@
+.modal.exam-questions-modal { width: min(1160px, 100%); min-width: 0; }
+.exam-questions-modal .modal-head > div { min-width: 0; }
+.exam-questions-modal .modal-head h2 { overflow-wrap: anywhere; }
+.exam-question-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; margin-top: 24px; }
+.exam-question-columns.read-only { grid-template-columns: 1fr; }
+.exam-question-columns h3, .exam-paper-preview h3 { font-size: 16px; margin-bottom: 12px; }
+.exam-bank-filters { margin-bottom: 16px; }
+.exam-bank-list { padding: 0; list-style: none; }
+.exam-bank-list > li { border-bottom: 1px solid var(--line); padding: 16px 0; display: flex; align-items: flex-start; gap: 10px; }
+.exam-bank-list > li > div { min-width: 0; flex: 1; }
+.exam-bank-list p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0; }
+.exam-bank-list small { color: var(--muted); }
+.exam-bank-list button { flex-shrink: 0; }
+.exam-selection-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; justify-content: space-between; margin-bottom: 16px; }
+.exam-selection-heading > strong { color: var(--green); }
+.exam-selected-list { list-style: none; padding: 0; margin: 0; }
+.exam-selected-list > li { padding: 18px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 14px; }
+.exam-question-content { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0; }
+.exam-question-tools { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-top: 14px; }
+.exam-question-tools .field { width: 140px; margin-bottom: 0; }
+.exam-source-options { padding-left: 22px; margin-top: 12px; }
+.exam-source-options li { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 6px; }
+.exam-source-options strong { color: #225c3c; }
+.exam-paper-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 24px 0; }
+.exam-paper-preview { border-top: 1px solid var(--line); padding-top: 22px; }
+.exam-paper-preview > ol { list-style: none; padding: 0; }
+.exam-paper-preview > ol > li { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.exam-paper-preview ol ol { padding-left: 28px; }
+.exam-paper-preview ol ol li { white-space: pre-wrap; overflow-wrap: anywhere; padding: 4px 0; }
+@media (max-width: 750px) { .exam-question-columns { grid-template-columns: 1fr; } .exam-question-tools { flex-wrap: wrap; } .exam-questions-modal .two-cols { grid-template-columns: 1fr; } }

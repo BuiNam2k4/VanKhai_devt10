@@ -61,7 +61,7 @@ Chỉ có luồng **DRAFT → PUBLISHED → CLOSED**. Tạo luôn DRAFT, không 
 
 Trước khi công bố, kiểm tra giảng viên đang hoạt động, lịch đầy đủ và chưa kết thúc, thời lượng/số lượt dương, có lớp hợp lệ, có ít nhất một câu hỏi hoạt động cùng môn với điểm dương. Câu trắc nghiệm cần 2–10 lựa chọn không trống, không trùng nội dung và đúng một đáp án đúng; tự luận không có lựa chọn. Chưa đủ điều kiện trả HTTP 400, trạng thái vẫn DRAFT.
 
-Task 8 bổ sung API/giao diện gán câu hỏi vào bài và thực hiện trộn câu/đáp án. Bài nháp mới tạo ở Task 7 chưa có câu hỏi nên chưa thể công bố; có thể thử công bố với bài nháp mẫu đã có liên kết hợp lệ và lịch được cập nhật.
+Task 8 đã bổ sung nút **Câu hỏi** để gán câu hỏi vào bài, đặt điểm, sắp xếp và xem thử đề theo cấu hình trộn. Bài nháp mới tạo cần gán câu hỏi trước khi công bố. Xem [hướng dẫn Task 8](exam-questions.md).
 
 Xóa nháp chỉ xóa liên kết câu hỏi/lớp của bài, giữ câu hỏi trong ngân hàng. Nếu bài có lịch sử lượt thi, trả HTTP 409 để giữ lịch sử. Response không chứa nội dung câu hỏi, lựa chọn hay đáp án đúng.
 
