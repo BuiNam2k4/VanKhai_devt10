@@ -4,7 +4,7 @@ server:
 
 spring:
   datasource:
-    url: "jdbc:mysql://localhost:3306/exam_guard"
+    url: "jdbc:mysql://localhost:3306/exam_guard?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true"
     username: root
     password: root
     hikari:
@@ -16,6 +16,8 @@ spring:
     open-in-view: false
     properties:
       hibernate:
+        type:
+          java_time_use_direct_jdbc: true
         jdbc:
           time_zone: UTC
   sql:

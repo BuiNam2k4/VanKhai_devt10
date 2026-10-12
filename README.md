@@ -28,7 +28,7 @@ Profile chạy `db/sample-data.sql` rồi `db/sample-exam-data.sql`. Có thể c
 | --- | --- | --- | --- |
 | Admin (ADMIN) | `demo_admin01` | `Demo@123` | Quản lý người dùng, môn, lớp, toàn bộ câu hỏi và bài thi |
 | Giảng viên (TEACHER) | `demo_teacher01`, `demo_teacher02`, `demo_teacher03` | `Demo@123` | Quản lý ngân hàng câu hỏi và đề do mình phụ trách |
-| Sinh viên (STUDENT) | `demo_student01` đến `demo_student20` | `Demo@123` | Đăng nhập vai trò sinh viên; dùng kiểm thử các chức năng tham gia thi ở các task tiếp theo |
+| Sinh viên (STUDENT) | `demo_student01` đến `demo_student20` | `Demo@123` | Tra cứu bài thi được giao, tìm kiếm/phân trang và xem điều kiện tham gia; bắt đầu phiên thi ở Task 10 |
 
 Ví dụ sinh viên: `demo_student01`, `demo_student02`, …, `demo_student20`. Đây là 1 admin, 3 giảng viên và 20 sinh viên. Script chỉ tạo tài khoản còn thiếu, không đặt lại mật khẩu tài khoản đã được bạn đổi.
 
@@ -55,3 +55,7 @@ Giảng viên và admin có thể tạo, xem, sửa, xóa bài thi nháp; cấu 
 ## Task 8
 
 Trong Quản lý bài thi, nút **Câu hỏi** mở màn hình chọn câu hỏi cùng môn từ ngân hàng có tìm kiếm/phân trang, đặt điểm, đổi thứ tự và bỏ câu khỏi đề. API kiểm tra quyền, trạng thái nháp, câu hỏi hợp lệ và giới hạn điểm; giữ mã liên kết khi sắp xếp. Có bản xem thử áp dụng cấu hình trộn câu/đáp án và dịch vụ tạo ảnh chụp đề lưu thứ tự cố định cho phiên thi. Xem [hướng dẫn câu hỏi trong đề và trộn đề](docs/exam-questions.md). Task 10 sẽ gọi dịch vụ ảnh chụp trong luồng bắt đầu phiên của sinh viên.
+
+## Task 9
+
+Sinh viên đăng nhập vào màn hình **Bài thi của tôi**, chỉ thấy đề PUBLISHED/CLOSED của lớp mình. Có tìm kiếm theo tên/môn/mô tả, lọc môn/trạng thái/lịch, sắp xếp, phân trang và xem chi tiết. Backend tính trạng thái tham gia theo UTC, lượt đã dùng và phiên đang làm; response không chứa đề, đáp án đúng hoặc điểm. Đề thực hành mới đang DRAFT nên chưa hiển thị cho sinh viên; giảng viên cần đặt lịch và công bố trước. Xem [hướng dẫn bài thi sinh viên](docs/student-exams.md). Task 10 bổ sung bắt đầu/tiếp tục phiên và bộ đếm giờ.

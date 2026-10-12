@@ -1,0 +1,23 @@
+.student-exam-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; padding: 22px; background: #fff; border: 1px solid var(--line); border-radius: 13px; margin-bottom: 14px; }
+.student-filter-actions { display: flex; gap: 10px; align-items: flex-end; padding-bottom: 17px; flex-wrap: wrap; }
+.student-sync-note { font-size: 12px; color: var(--muted); line-height: 1.65; }
+.student-exam-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.student-exam-card { display: flex; flex-direction: column; background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 24px; min-width: 0; }
+.student-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.student-exam-card h2 { font-size: 20px; line-height: 1.4; overflow-wrap: anywhere; margin-bottom: 8px; }
+.student-subject, .student-teacher { color: var(--muted); font-size: 13px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.student-exam-facts { margin: 14px 0; font-size: 13px; }
+.student-exam-facts > div { display: grid; grid-template-columns: minmax(100px, 35%) minmax(0, 1fr); gap: 12px; padding: 6px 0; }
+.student-exam-facts dt { color: var(--muted); }
+.student-exam-facts dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+.student-participation-message { font-size: 13px; line-height: 1.7; margin: 14px 0; }
+.student-exam-card > button { align-self: flex-start; margin-top: auto; }
+.participation-available, .participation-in_progress { background: #e5f4e8; border-color: #bedcc7; color: #225c3c; }
+.participation-upcoming { background: #eaf1fa; border-color: #ccdcef; color: #385f82; }
+.participation-session_expired, .participation-attempts_exhausted { background: #fcf0df; border-color: #ecdbbe; color: #805820; }
+.participation-closed, .participation-expired, .participation-unavailable { background: #eceff1; border-color: #d5dce0; color: #59656d; }
+.modal.student-exam-detail { width: min(700px, 100%); min-width: 0; }
+.student-exam-detail .modal-head > div { min-width: 0; }
+.student-exam-detail h2, .student-exam-description { overflow-wrap: anywhere; white-space: pre-wrap; }
+@media (max-width: 900px) { .student-exam-grid { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .student-exam-filters { grid-template-columns: 1fr; padding: 16px; } .student-exams .page-heading { flex-direction: column; align-items: flex-start; } .student-exam-card { padding: 18px; } }
