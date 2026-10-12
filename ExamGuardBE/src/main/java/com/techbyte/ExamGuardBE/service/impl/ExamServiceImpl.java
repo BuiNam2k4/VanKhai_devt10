@@ -1,6 +1,7 @@
 package com.techbyte.ExamGuardBE.service.impl;
 
 import com.techbyte.ExamGuardBE.common.PaginationUtils;
+import com.techbyte.ExamGuardBE.common.ExamPaperFactory;
 import com.techbyte.ExamGuardBE.controller.request.ExamRequest;
 import com.techbyte.ExamGuardBE.controller.response.*;
 import com.techbyte.ExamGuardBE.entity.*;
@@ -28,6 +29,7 @@ public class ExamServiceImpl implements ExamService {
     private final SubjectRepository subjects;
     private final SchoolClassRepository classes;
     private final UserRepository users;
+    private final ExamPaperFactory papers;
 
     @Override
     @Transactional(readOnly = true)
@@ -156,18 +158,8 @@ public class ExamServiceImpl implements ExamService {
         if (!ready || links.isEmpty()) throw new AppException(ErrorCode.EXAM_NOT_READY);
         var grouped = options.findByQuestionIdInOrderByDisplayOrderAsc(links.stream().map(item -> item.getQuestion().getId()).toList())
                 .stream().collect(Collectors.groupingBy(item -> item.getQuestion().getId()));
-        for (var link : links) {
-            Question question = link.getQuestion();
-            var choices = grouped.getOrDefault(question.getId(), List.of());
-            boolean validChoices = question.getType() == QuestionType.ESSAY ? choices.isEmpty() : choices.size() >= 2
-                    && choices.size() <= 10 && choices.stream().filter(QuestionOption::isCorrect).count() == 1
-                    && choices.stream().noneMatch(item -> item.getContent().isBlank())
-                    && choices.stream().map(item -> item.getContent().trim().toLowerCase(Locale.ROOT)).distinct().count() == choices.size();
-            if (!question.isActive() || question.getContent().isBlank() || !question.getSubject().getId().equals(exam.getSubject().getId())
-                    || link.getPoints() == null || link.getPoints().signum() <= 0 || !validChoices) {
-                throw new AppException(ErrorCode.EXAM_NOT_READY);
-            }
-        }
+        try { papers.create(exam, links, grouped); }
+        catch (AppException invalidQuestions) { throw new AppException(ErrorCode.EXAM_NOT_READY); }
     }
 
     private Exam getExam(UserResponse actor, Long id, boolean lock) {

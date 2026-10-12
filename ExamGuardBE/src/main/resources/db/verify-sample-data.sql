@@ -1,4 +1,5 @@
--- Read-only checks. Each business/join table should have 24 demo records on a fresh database.
+-- Read-only checks. The base seed starts with 24 rows per business/join table.
+-- sample-exam-data.sql expands questions/options/exams and their joins for practice.
 SELECT 'roles' AS table_name, COUNT(*) AS record_count FROM roles
 UNION ALL SELECT 'users', COUNT(*) FROM users
 UNION ALL SELECT 'user_roles', COUNT(*) FROM user_roles
@@ -15,6 +16,12 @@ UNION ALL SELECT 'session_questions', COUNT(*) FROM session_questions
 UNION ALL SELECT 'session_question_options', COUNT(*) FROM session_question_options
 UNION ALL SELECT 'student_answers', COUNT(*) FROM student_answers
 UNION ALL SELECT 'exam_violation_logs', COUNT(*) FROM exam_violation_logs;
+
+-- Practice exams should initially have ten questions and ten total points.
+SELECT e.id, e.title, e.status, COUNT(eq.id) AS question_count, COALESCE(SUM(eq.points), 0) AS total_points
+FROM exams e LEFT JOIN exam_questions eq ON eq.exam_id = e.id
+WHERE e.description = 'EXAMGUARD_PRACTICE_V1'
+GROUP BY e.id, e.title, e.status ORDER BY e.id;
 
 -- Every invalid_count should be zero. These checks go beyond foreign keys.
 SELECT 'single_choice_options' AS check_name, COUNT(*) AS invalid_count

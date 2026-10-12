@@ -7,8 +7,39 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import java.util.*;
+import java.time.LocalDateTime;
+import com.techbyte.ExamGuardBE.entity.Subject;
 
 public interface ExamRepository extends JpaRepository<Exam, Long> {
+    @EntityGraph(attributePaths = {"subject", "teacher"})
+    @Query("""
+        select e from Exam e where e.status in (com.techbyte.ExamGuardBE.enums.ExamStatus.PUBLISHED, com.techbyte.ExamGuardBE.enums.ExamStatus.CLOSED)
+        and exists (select c.id from Exam assigned join assigned.classes c join c.students s where assigned.id = e.id and s.id = :studentId)
+        and (:keyword = '' or lower(e.title) like :keyword or lower(e.description) like :keyword or lower(e.subject.name) like :keyword or lower(e.subject.code) like :keyword)
+        and (:subjectId is null or e.subject.id = :subjectId) and (:status is null or e.status = :status)
+        and (:window is null or (:window = 'UPCOMING' and e.startsAt > :now)
+             or (:window = 'OPEN' and e.startsAt <= :now and e.endsAt > :now)
+             or (:window = 'ENDED' and e.endsAt <= :now))
+        """)
+    Page<Exam> searchForStudent(@Param("studentId") Long studentId, @Param("keyword") String keyword,
+        @Param("subjectId") Long subjectId, @Param("status") ExamStatus status, @Param("window") String window,
+        @Param("now") LocalDateTime now, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"subject", "teacher"})
+    @Query("""
+        select e from Exam e where e.id = :id
+        and e.status in (com.techbyte.ExamGuardBE.enums.ExamStatus.PUBLISHED, com.techbyte.ExamGuardBE.enums.ExamStatus.CLOSED)
+        and exists (select c.id from Exam assigned join assigned.classes c join c.students s where assigned.id = e.id and s.id = :studentId)
+        """)
+    Optional<Exam> findVisibleToStudent(@Param("id") Long id, @Param("studentId") Long studentId);
+
+    @Query("""
+        select subject from Subject subject where exists (
+        select e.id from Exam e join e.classes c join c.students s where s.id = :studentId and e.subject.id = subject.id
+        and e.status in (com.techbyte.ExamGuardBE.enums.ExamStatus.PUBLISHED, com.techbyte.ExamGuardBE.enums.ExamStatus.CLOSED))
+        """)
+    Page<Subject> findSubjectsForStudent(@Param("studentId") Long studentId, Pageable pageable);
+
     @EntityGraph(attributePaths = {"subject", "teacher"})
     @Query("""
             select e from Exam e where

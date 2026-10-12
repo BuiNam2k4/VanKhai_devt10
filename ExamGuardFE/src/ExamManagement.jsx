@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
+import ExamQuestionsEditor from './ExamQuestionsEditor'
 import './exam-management.css'
 
 const statuses = { DRAFT: 'Nháp', PUBLISHED: 'Đã công bố', CLOSED: 'Đã đóng' }
@@ -18,6 +19,7 @@ export default function ExamManagement({ token, isAdmin = false }) {
   const [failure, setFailure] = useState(null)
   const [notice, setNotice] = useState(null)
   const [editor, setEditor] = useState(null)
+  const [questionEditor, setQuestionEditor] = useState(null)
   const [pending, setPending] = useState(false)
   const query = new URLSearchParams({ page, size: 10, ...Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== '')) }).toString()
   const requestKey = `${base}?${query}&refresh=${version}`
@@ -63,6 +65,12 @@ export default function ExamManagement({ token, isAdmin = false }) {
     await api(`${base}/exams${item ? `/${item.id}` : ''}`, { token, method: item ? 'PUT' : 'POST', body: values })
     setEditor(null); setNotice({ type: 'success', text: item ? 'Đã lưu cấu hình bài thi.' : 'Đã tạo bài thi nháp.' }); refresh()
   }
+  async function openQuestions(item) {
+    try {
+      const [exam, data] = await Promise.all([api(`${base}/exams/${item.id}`, { token }), api(`${base}/exams/${item.id}/questions`, { token })])
+      setQuestionEditor({ exam, data })
+    } catch (error) { setNotice({ type: 'error', text: error.message }) }
+  }
   async function action(item, operation) {
     const prompt = operation === 'delete' ? `Xóa bài thi nháp “${item.title}”?` : operation === 'publish'
       ? `Công bố “${item.title}”? Sau khi công bố, cấu hình bài thi sẽ được khóa.` : `Đóng “${item.title}”? Sinh viên sẽ không được bắt đầu lượt mới.`
@@ -96,11 +104,12 @@ export default function ExamManagement({ token, isAdmin = false }) {
           <td><small>Mở: {formatTime(item.startsAt)}</small><small>Đóng: {formatTime(item.endsAt)}</small><strong>{item.durationMinutes} phút / lượt</strong></td>
           <td><span className="tag">Tối đa {item.maxAttempts} lượt</span><small>{visibilityLabels[item.resultVisibility]}</small></td>
           {isAdmin && <td>{item.teacherName}</td>}<td><span className={`tag exam-status-${item.status.toLowerCase()}`}>{statuses[item.status]}</span></td>
-          <td className="actions"><button disabled={!catalog || pending} onClick={() => open(item, true)}>Xem</button>{item.status === 'DRAFT' && <><button disabled={!catalog || pending} onClick={() => open(item, false)}>Sửa</button><button disabled={pending} onClick={() => action(item, 'publish')}>Công bố</button><button className="danger" disabled={pending} onClick={() => action(item, 'delete')}>Xóa</button></>}{item.status === 'PUBLISHED' && <button className="danger" disabled={pending} onClick={() => action(item, 'close')}>Đóng</button>}</td>
+          <td className="actions"><button disabled={!catalog || pending} onClick={() => open(item, true)}>Xem</button><button disabled={pending} onClick={() => openQuestions(item)}>Câu hỏi</button>{item.status === 'DRAFT' && <><button disabled={!catalog || pending} onClick={() => open(item, false)}>Sửa</button><button disabled={pending} onClick={() => action(item, 'publish')}>Công bố</button><button className="danger" disabled={pending} onClick={() => action(item, 'delete')}>Xóa</button></>}{item.status === 'PUBLISHED' && <button className="danger" disabled={pending} onClick={() => action(item, 'close')}>Đóng</button>}</td>
         </tr>)}</tbody></table>}
     </div>
     {result && result.totalPages > 1 && <nav className="pagination" aria-label="Phân trang bài thi"><button disabled={page <= 1 || pending} onClick={() => setPage(page - 1)}>← Trước</button><span>Trang {page} / {result.totalPages}</span><button disabled={page >= result.totalPages || pending} onClick={() => setPage(page + 1)}>Sau →</button></nav>}
     {editor && catalog && <ExamEditor editor={editor} catalog={catalog} isAdmin={isAdmin} onClose={() => setEditor(null)} onSave={save} />}
+    {questionEditor && <ExamQuestionsEditor {...questionEditor} token={token} isAdmin={isAdmin} onClose={() => setQuestionEditor(null)} onSaved={refresh} />}
   </section>
 }
 

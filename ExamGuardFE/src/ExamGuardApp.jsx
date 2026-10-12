@@ -3,6 +3,7 @@ import { api, clearSession, getSession, saveSession } from './api'
 import AuthScreen from './AuthScreen'
 import AdminDashboard from './AdminDashboard'
 import TeacherDashboard from './TeacherDashboard'
+import StudentExams from './StudentExams'
 import './management.css'
 
 const roleLabels = { ADMIN: 'Quản trị viên', TEACHER: 'Giảng viên', STUDENT: 'Sinh viên' }
@@ -49,6 +50,6 @@ export default function ExamGuardApp() {
       ? <AdminDashboard token={session.token} />
       : user.roles.includes('TEACHER')
         ? <TeacherDashboard token={session.token} />
-      : <main className="simple-dashboard"><span className="eyebrow">EXAMGUARD</span><h1>Xin chào, {user.fullName}</h1><p>Tài khoản của bạn đã đăng nhập với vai trò {user.roles.map(role => roleLabels[role]).join(', ')}.</p><div className="empty-panel">Các chức năng nghiệp vụ dành cho vai trò này sẽ được bổ sung ở các task tiếp theo.</div></main>}
+      : <StudentExams token={session.token} />}
   </div>
 }

@@ -1,4 +1,5 @@
 -- Development demo: 24 rows in each business/join table; roles retain 3 values.
+-- sample-exam-data.sql adds 24 draft practice exams with ten questions each.
 -- Accounts: demo_admin01, demo_teacher01..03, demo_student01..20.
 -- All demo passwords are Demo@123, stored as a verified BCrypt hash.
 -- Existing rows are preserved. Run sequentially; natural keys avoid duplicate seed rows.
