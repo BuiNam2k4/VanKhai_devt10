@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
 import com.techbyte.ExamGuardBE.entity.Subject;
 
 public interface ExamRepository extends JpaRepository<Exam, Long> {
+    @Query("select count(c) > 0 from Exam e join e.classes c join c.students s where e.id = :examId and s.id = :studentId")
+    boolean isAssignedToStudent(@Param("examId") Long examId, @Param("studentId") Long studentId);
     @EntityGraph(attributePaths = {"subject", "teacher"})
     @Query("""
         select e from Exam e where e.status in (com.techbyte.ExamGuardBE.enums.ExamStatus.PUBLISHED, com.techbyte.ExamGuardBE.enums.ExamStatus.CLOSED)

@@ -1,0 +1,327 @@
+{
+  "info": {
+    "name": "ExamGuard Task 10 Session and Timer",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run against an assigned, open exam. Creates one real attempt; repeated runs use the same device. Variables: baseUrl, username, otherUsername, password, examId, deviceId. Never exports tokens. Task 11/12 add answer saving and submission."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8080"
+    },
+    {
+      "key": "username",
+      "value": "demo_student01"
+    },
+    {
+      "key": "otherUsername",
+      "value": "demo_student02"
+    },
+    {
+      "key": "password",
+      "value": "Demo@123"
+    },
+    {
+      "key": "examId",
+      "value": ""
+    },
+    {
+      "key": "deviceId",
+      "value": "postman-local-device-001"
+    }
+  ],
+  "item": [
+    {
+      "name": "Login student",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/token",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\": \"{{username}}\", \"password\": \"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login succeeds', () => pm.response.to.have.status(200));",
+              "const d=pm.response.json().data; pm.test('Student role', () => pm.expect(d.user.roles).to.include('STUDENT'));",
+              "pm.collectionVariables.set('token',d.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Check assigned exam",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/student/exams/{{examId}}",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Exam is visible', () => pm.response.to.have.status(200));",
+              "const d=pm.response.json().data; pm.test('May start or resume', () => pm.expect(d.canStart || d.canResume).to.eql(true));",
+              "pm.collectionVariables.set('examEnd',d.endsAt); pm.collectionVariables.set('durationMinutes',d.durationMinutes);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Start or restore current attempt",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/student/exams/{{examId}}/sessions",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"deviceId\": \"{{deviceId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Start succeeds', () => pm.expect([200,201]).to.include(pm.response.code));",
+              "const d=pm.response.json().data;",
+              "pm.test('Fixed bounded deadline', () => {",
+              "const expected=Math.min(Date.parse(d.startedAt)+Number(pm.collectionVariables.get('durationMinutes'))*60000,Date.parse(pm.collectionVariables.get('examEnd')));",
+              "pm.expect(Date.parse(d.expiresAt)).to.eql(expected); });",
+              "pm.test('Live saved paper', () => { pm.expect(d.canContinue).to.eql(true); pm.expect(d.questions.length).to.be.above(0); });",
+              "pm.test('No grading keys or source IDs', () => {",
+              "function check(v) { if (v && typeof v==='object') for (const k of Object.keys(v)) { pm.expect(['correct','score','awardedPoints','sourceOptionId','examQuestionId','passwordHash','riskScore']).not.to.include(k); check(v[k]); } } check(d); });",
+              "pm.collectionVariables.set('sessionId',d.id); pm.collectionVariables.set('deadline',d.expiresAt); pm.collectionVariables.set('paper',JSON.stringify(d.questions));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Repeated start is idempotent",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/student/exams/{{examId}}/sessions",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"deviceId\": \"{{deviceId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Resume returns 200', () => pm.response.to.have.status(200));",
+              "const d=pm.response.json().data;",
+              "pm.test('Same session', () => pm.expect(String(d.id)).to.eql(String(pm.collectionVariables.get('sessionId'))));",
+              "pm.test('No time extension', () => pm.expect(d.expiresAt).to.eql(pm.collectionVariables.get('deadline')));",
+              "pm.test('Same question and option order', () => pm.expect(JSON.stringify(d.questions)).to.eql(pm.collectionVariables.get('paper')));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Restore saved session",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/student/sessions/{{sessionId}}?deviceId={{deviceId}}",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Restore succeeds', () => pm.response.to.have.status(200)); const d=pm.response.json().data;",
+              "pm.test('Snapshot unchanged', () => pm.expect(JSON.stringify(d.questions)).to.eql(pm.collectionVariables.get('paper')));",
+              "pm.test('Deadline unchanged', () => pm.expect(d.expiresAt).to.eql(pm.collectionVariables.get('deadline')));",
+              "pm.test('Server time and remaining seconds', () => { pm.expect(d.remainingSeconds).to.be.above(0); pm.expect(Date.parse(d.serverTime)).to.be.below(Date.parse(d.expiresAt)); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Other device cannot start another attempt",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/student/exams/{{examId}}/sessions",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"deviceId\": \"postman-different-device\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Device conflict', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Other device cannot restore",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/student/sessions/{{sessionId}}?deviceId=postman-different-device",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Device conflict on restore', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login another student",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/token",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\": \"{{otherUsername}}\", \"password\": \"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Other login succeeds', () => pm.response.to.have.status(200)); pm.collectionVariables.set('otherToken',pm.response.json().data.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Other student cannot read the session",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/student/sessions/{{sessionId}}?deviceId={{deviceId}}",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Session ownership enforced', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

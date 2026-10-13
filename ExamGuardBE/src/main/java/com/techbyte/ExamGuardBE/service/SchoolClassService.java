@@ -12,4 +12,6 @@ public interface SchoolClassService {
     UserPageResponse findStudents(Long classId, String keyword, String sortBy, int page, int size);
     SchoolClassResponse addStudent(Long classId, Long studentId);
     SchoolClassResponse removeStudent(Long classId, Long studentId);
+    SchoolClassPageResponse findForUser(Long userId, boolean includeTeaching, String keyword, String sortBy, int page, int size);
+    UserPageResponse findTeacherStudents(UserResponse actor, Long classId, String keyword, String sortBy, int page, int size);
 }

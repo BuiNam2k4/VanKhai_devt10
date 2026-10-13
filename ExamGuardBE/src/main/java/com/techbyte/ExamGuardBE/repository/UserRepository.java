@@ -2,6 +2,7 @@ package com.techbyte.ExamGuardBE.repository;
 
 import com.techbyte.ExamGuardBE.entity.User;
 import com.techbyte.ExamGuardBE.enums.RoleName;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
@@ -32,6 +33,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @EntityGraph(attributePaths = "roles")
     @Query("select u from User u where u.id = :id")
     Optional<User> findWithRolesById(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id")
+    Optional<User> findForUpdate(@Param("id") Long id);
 
     boolean existsByUsernameIgnoreCase(String username);
     boolean existsByUsernameIgnoreCaseAndIdNot(String username, Long id);

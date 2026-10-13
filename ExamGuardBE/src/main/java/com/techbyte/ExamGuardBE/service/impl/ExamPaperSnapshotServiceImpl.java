@@ -21,6 +21,7 @@ public class ExamPaperSnapshotServiceImpl implements ExamPaperSnapshotService {
     private final SessionQuestionRepository questions;
     private final SessionQuestionOptionRepository choices;
     private final ExamPaperFactory papers;
+    private final QuestionRepository sources;
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
@@ -31,8 +32,10 @@ public class ExamPaperSnapshotServiceImpl implements ExamPaperSnapshotService {
         if (session.getStatus() != SessionStatus.IN_PROGRESS || session.getExam().getStatus() != ExamStatus.PUBLISHED) {
             throw new AppException(ErrorCode.INVALID_SESSION_PAPER);
         }
+        for (Long id : links.findQuestionIdsByExamId(session.getExam().getId())) sources.findForUpdate(id)
+                .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
         var assigned = links.findByExamIdOrderByDisplayOrderAsc(session.getExam().getId());
-        var grouped = assigned.isEmpty() ? Map.<Long, List<QuestionOption>>of() : options.findByQuestionIdInOrderByDisplayOrderAsc(
+        var grouped = assigned.isEmpty() ? Map.<Long, List<QuestionOption>>of() : options.findForSnapshot(
                 assigned.stream().map(link -> link.getQuestion().getId()).toList()).stream().collect(Collectors.groupingBy(option -> option.getQuestion().getId()));
         var paper = papers.create(session.getExam(), assigned, grouped);
         List<SessionQuestion> created = new ArrayList<>(); int order = 0;

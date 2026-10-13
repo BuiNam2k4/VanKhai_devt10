@@ -218,6 +218,78 @@ abstract class AbstractExamManagementIntegrationTests {
         assertThat(exams.existsById(historicalId)).isTrue();
     }
 
+    @Test
+    void accountClassesIncludeAllMembershipsAndSupportPagingAndTeacherLookup() throws Exception {
+        schoolClass.getStudents().add(student); otherClass.getStudents().add(student); em.flush();
+        mvc.perform(get("/api/admin/users/{id}/classes", student.getId()).header("Authorization", bearer(adminToken))
+                .param("page", "2").param("size", "1").param("sortBy", "code:asc"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.pageNumber").value(2))
+                .andExpect(jsonPath("$.data.totalElements").value(2)).andExpect(jsonPath("$.data.totalPages").value(2))
+                .andExpect(jsonPath("$.data.classes[0].code").value(otherClass.getCode()));
+        mvc.perform(get("/api/admin/users/{id}/classes", student.getId()).header("Authorization", bearer(adminToken))
+                .param("keyword", schoolClass.getCode()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.classes[0].teacherName").value(teacher.getFullName()));
+        // An account can teach and be enrolled in the same class; the class appears only once.
+        schoolClass.getStudents().add(teacher); em.flush();
+        mvc.perform(get("/api/admin/users/{id}/classes", teacher.getId()).header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.classes[0].id").value(schoolClass.getId()));
+        mvc.perform(get("/api/admin/users/{id}/classes", Long.MAX_VALUE).header("Authorization", bearer(adminToken)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void studentClassLookupUsesAuthenticatedIdentityAndReflectsMembershipChanges() throws Exception {
+        mvc.perform(get("/api/student/classes").header("Authorization", bearer(studentToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(0));
+        schoolClass.getStudents().add(student); otherClass.getStudents().add(student); em.flush();
+        mvc.perform(get("/api/student/classes").header("Authorization", bearer(studentToken))
+                .param("userId", other.getId().toString()).param("studentId", other.getId().toString())
+                .param("sortBy", "code:asc").param("size", "1").param("page", "0"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.classes[0].id").value(schoolClass.getId()))
+                .andExpect(jsonPath("$.data.classes[0].students").doesNotExist())
+                .andExpect(jsonPath("$.data.classes[0].teacher.passwordHash").doesNotExist());
+        schoolClass.getStudents().clear(); em.flush();
+        mvc.perform(get("/api/student/classes").header("Authorization", bearer(studentToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.classes[0].id").value(otherClass.getId()));
+        mvc.perform(get("/api/student/classes").header("Authorization", bearer(studentToken)).param("size", "101"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/student/classes").header("Authorization", bearer(studentToken)).param("sortBy", "teacher.passwordHash:asc"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void teacherRosterIsSearchableAndRestrictedToOwnedClasses() throws Exception {
+        schoolClass.getStudents().add(student); em.flush();
+        mvc.perform(get("/api/teacher/classes/{id}/students", schoolClass.getId()).header("Authorization", bearer(teacherToken))
+                .param("keyword", student.getUsername()).param("sortBy", "username:asc").param("page", "1").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.users[0].username").value(student.getUsername()))
+                .andExpect(jsonPath("$.data.users[0].passwordHash").doesNotExist());
+        mvc.perform(get("/api/teacher/classes/{id}/students", schoolClass.getId()).header("Authorization", bearer(teacherToken))
+                .param("keyword", "no-such-student"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(0));
+        mvc.perform(get("/api/teacher/classes/{id}/students", otherClass.getId()).header("Authorization", bearer(teacherToken)))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/teacher/classes/{id}/students", schoolClass.getId()).header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/admin/classes/{id}/students", schoolClass.getId()).header("Authorization", bearer(adminToken))
+                .param("sortBy", "fullName:asc"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.users[0].username").value(student.getUsername()));
+        mvc.perform(get("/api/teacher/classes/{id}/students", schoolClass.getId()).header("Authorization", bearer(studentToken)))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/admin/users/{id}/classes", student.getId()).header("Authorization", bearer(teacherToken)))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/admin/users/{id}/classes", other.getId()).header("Authorization", bearer(studentToken)))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/student/classes").header("Authorization", bearer(teacherToken))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/student/classes")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/teacher/classes/{id}/students", 0).header("Authorization", bearer(teacherToken))).andExpect(status().isBadRequest());
+    }
+
     private Map<String, Object> request(String title) {
         var payload = new HashMap<String, Object>(); payload.put("subjectId", subject.getId()); payload.put("title", prefix + " " + title);
         payload.put("durationMinutes", 45); payload.put("maxAttempts", 1); payload.put("resultVisibility", "AFTER_EXAM_END");

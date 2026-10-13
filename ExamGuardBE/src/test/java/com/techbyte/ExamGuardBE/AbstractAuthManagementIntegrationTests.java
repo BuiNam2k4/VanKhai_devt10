@@ -158,6 +158,114 @@ abstract class AbstractAuthManagementIntegrationTests {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void everyRoleCanEditOnlyTheirOwnProfileWithoutChangingPrivilegesOrPassword() throws Exception {
+        String prefix = "profile" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        User unrelated = createUser(prefix + "other", RoleName.STUDENT);
+        for (RoleName role : RoleName.values()) {
+            User user = createUser(prefix + role.name().toLowerCase(Locale.ROOT), role);
+            String token = login(user.getUsername()); String hash = user.getPasswordHash(); String oldUsername = user.getUsername();
+            String renamed = oldUsername + "new";
+            var payload = new HashMap<String, Object>(); payload.put("fullName", "  Họ tên đã chỉnh sửa  "); payload.put("username", renamed.toUpperCase(Locale.ROOT));
+            payload.put("email", renamed.toUpperCase(Locale.ROOT) + "@EXAMPLE.TEST");
+            payload.put("id", unrelated.getId()); payload.put("roles", List.of("ADMIN")); payload.put("enabled", false); payload.put("password", "Injected@123");
+            mvc.perform(put("/api/auth/me").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(payload)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(user.getId()))
+                    .andExpect(jsonPath("$.data.fullName").value("Họ tên đã chỉnh sửa"))
+                    .andExpect(jsonPath("$.data.username").value(renamed)).andExpect(jsonPath("$.data.email").value(renamed + "@example.test"))
+                    .andExpect(jsonPath("$.data.roles[0]").value(role.name())).andExpect(jsonPath("$.data.enabled").value(true))
+                    .andExpect(jsonPath("$.data.passwordHash").doesNotExist());
+            mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.username").value(renamed));
+            assertThat(users.findById(user.getId()).orElseThrow().getPasswordHash()).isEqualTo(hash);
+            assertThat(users.findById(unrelated.getId()).orElseThrow().getUsername()).isEqualTo(prefix + "other");
+            authenticate(oldUsername, "Password@123", 401); authenticate(renamed, "Password@123", 200);
+        }
+    }
+
+    @Test
+    void profileDuplicatesAndValidationDoNotPartiallyChangeTheAccount() throws Exception {
+        var user = createUser("settings_self", RoleName.STUDENT); var other = createUser("settings_other", RoleName.STUDENT); String token = login(user.getUsername());
+        var values = new HashMap<String, Object>(); values.put("fullName", "Changed"); values.put("username", other.getUsername().toUpperCase(Locale.ROOT)); values.put("email", user.getEmail());
+        updateProfile(token, values, 409);
+        values.put("username", user.getUsername()); values.put("email", other.getEmail().toUpperCase(Locale.ROOT)); updateProfile(token, values, 409);
+        values.put("email", "invalid-email"); updateProfile(token, values, 400);
+        values.put("email", user.getEmail()); values.put("username", "invalid username"); updateProfile(token, values, 400);
+        values.put("username", user.getUsername()); values.put("fullName", " "); updateProfile(token, values, 400);
+        assertThat(users.findById(user.getId()).orElseThrow().getFullName()).isEqualTo("settings self");
+        mvc.perform(put("/api/auth/me").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(values))).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void passwordChangeChecksCurrentConfirmationLengthAndUtf8LimitWithoutChangingHashOnFailure() throws Exception {
+        var user = createUser("settings_password", RoleName.STUDENT); String token = login(user.getUsername()); String hash = user.getPasswordHash();
+        changePassword(token, "Wrong@123", "NewPassword@123", "NewPassword@123", 400);
+        changePassword(token, "Password@123", "NewPassword@123", "Different@123", 400);
+        changePassword(token, "Password@123", "short", "short", 400);
+        changePassword(token, "Password@123", "á".repeat(37), "á".repeat(37), 400);
+        changePassword(token, "á".repeat(37), "NewPassword@123", "NewPassword@123", 400);
+        assertThat(users.findById(user.getId()).orElseThrow().getPasswordHash()).isEqualTo(hash);
+        authenticate(user.getUsername(), "Password@123", 200);
+    }
+
+    @Test
+    void passwordChangeInvalidatesAllOldTokensAndKeepsIdentityAndRoles() throws Exception {
+        var user = createUser("settings_change", RoleName.TEACHER); String first = login(user.getUsername()); String second = login(user.getUsername());
+        changePassword(first, "Password@123", "NewPassword@123", "NewPassword@123", 200);
+        var stored = users.findById(user.getId()).orElseThrow();
+        assertThat(passwords.matches("NewPassword@123", stored.getPasswordHash())).isTrue();
+        assertThat(stored.getRoles()).extracting(Role::getName).containsExactly(RoleName.TEACHER);
+        for (String token : List.of(first, second)) {
+            mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/introspect").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("token", token))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.valid").value(false));
+        }
+        authenticate(stored.getUsername(), "Password@123", 401);
+        String newToken = authenticate(stored.getUsername(), "NewPassword@123", 200);
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + newToken)).andExpect(status().isOk());
+        String claims = new String(Base64.getUrlDecoder().decode(newToken.split("\\.")[1]), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(claims).doesNotContain(stored.getPasswordHash(), "passwordHash");
+        assertThat(json.readTree(claims).get("credentialStamp").asText()).hasSize(43);
+    }
+
+    @Test
+    void administratorPasswordResetAlsoInvalidatesTheAffectedUsersOldToken() throws Exception {
+        var admin = createUser("settings_admin", RoleName.ADMIN); var student = createUser("settings_reset", RoleName.STUDENT);
+        String adminToken = login(admin.getUsername()); String studentToken = login(student.getUsername());
+        var body = Map.of("username", student.getUsername(), "email", student.getEmail(), "fullName", student.getFullName(),
+                "roles", List.of("STUDENT"), "enabled", true, "password", "ResetPassword@123");
+        mvc.perform(put("/api/admin/users/{id}", student.getId()).header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body))).andExpect(status().isOk());
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + studentToken)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + adminToken)).andExpect(status().isOk());
+        authenticate(student.getUsername(), "ResetPassword@123", 200);
+    }
+
+    @Test
+    void settingsRequireAuthenticationAndDisabledAccountsCannotUseExistingTokens() throws Exception {
+        var user = createUser("settings_disabled", RoleName.STUDENT); String token = login(user.getUsername());
+        var body = Map.of("currentPassword", "Password@123", "newPassword", "NewPassword@123", "confirmPassword", "NewPassword@123");
+        mvc.perform(put("/api/auth/password").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body))).andExpect(status().isUnauthorized());
+        user.setEnabled(false); users.saveAndFlush(user);
+        changePassword(token, "Password@123", "NewPassword@123", "NewPassword@123", 401);
+        updateProfile(token, Map.of("fullName", "Changed", "username", user.getUsername(), "email", user.getEmail()), 401);
+    }
+
+    private void updateProfile(String token, Map<String, Object> body, int expected) throws Exception {
+        mvc.perform(put("/api/auth/me").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body)))
+                .andExpect(status().is(expected));
+    }
+    private void changePassword(String token, String current, String next, String confirmation, int expected) throws Exception {
+        mvc.perform(put("/api/auth/password").header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("currentPassword", current, "newPassword", next, "confirmPassword", confirmation))))
+                .andExpect(status().is(expected));
+    }
+    private String authenticate(String username, String password, int expected) throws Exception {
+        var response = mvc.perform(post("/api/auth/token").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("username", username, "password", password))))
+                .andExpect(status().is(expected)).andReturn().getResponse().getContentAsString();
+        return expected == 200 ? json.readTree(response).get("data").get("token").asText() : null;
+    }
+
     private User createUser(String username, RoleName roleName) {
         User user = new User();
         user.setUsername(username);
