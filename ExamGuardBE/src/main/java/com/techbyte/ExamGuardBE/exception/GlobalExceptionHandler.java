@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,7 +34,7 @@ public class GlobalExceptionHandler {
                 .status(400).message(ErrorCode.INVALID_REQUEST.getMessage()).data(errors).build());
     }
 
-    @ExceptionHandler({ConstraintViolationException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({ConstraintViolationException.class, HttpMessageNotReadableException.class, MissingServletRequestParameterException.class})
     ResponseEntity<ApiResponse<Void>> handleInvalidRequest(Exception exception) {
         return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
                 .status(400).message(ErrorCode.INVALID_REQUEST.getMessage()).build());

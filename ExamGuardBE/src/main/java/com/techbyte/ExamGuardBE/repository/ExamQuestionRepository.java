@@ -6,6 +6,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.*;
 
 public interface ExamQuestionRepository extends JpaRepository<ExamQuestion, Long> {
+    @Query("select eq.question.id from ExamQuestion eq where eq.exam.id = :id order by eq.question.id")
+    List<Long> findQuestionIdsByExamId(@Param("id") Long id);
     @EntityGraph(attributePaths = {"question", "question.subject"})
     List<ExamQuestion> findByExamIdOrderByDisplayOrderAsc(Long examId);
     boolean existsByExamId(Long examId);

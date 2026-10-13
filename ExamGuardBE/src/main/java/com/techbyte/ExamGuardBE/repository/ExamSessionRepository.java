@@ -7,6 +7,10 @@ import org.springframework.data.repository.query.Param;
 import java.util.*;
 
 public interface ExamSessionRepository extends JpaRepository<ExamSession, Long> {
+    List<ExamSession> findByExamIdAndStudentIdOrderByAttemptNumberAsc(Long examId, Long studentId);
+
+    @Query("select s from ExamSession s where s.id = :id and s.student.id = :studentId")
+    Optional<ExamSession> findOwned(@Param("id") Long id, @Param("studentId") Long studentId);
     @Query("select s.exam.id as examId, count(s) as attemptsUsed from ExamSession s where s.student.id = :studentId and s.exam.id in :ids group by s.exam.id")
     List<AttemptCount> countStudentAttempts(@Param("studentId") Long studentId, @Param("ids") Collection<Long> ids);
 

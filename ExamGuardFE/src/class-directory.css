@@ -1,0 +1,10 @@
+.class-directory-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.class-directory-card { min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 22px; }
+.class-directory-card .code { display: inline-block; overflow-wrap: anywhere; }
+.class-directory-card h2 { font-size: 19px; line-height: 1.5; margin: 16px 0 12px; overflow-wrap: anywhere; }
+.class-directory-card p { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.class-directory .page-heading p { overflow-wrap: anywhere; }
+.class-roster-list { max-height: none; }
+.class-roster-list li > div { min-width: 0; overflow-wrap: anywhere; }
+.class-roster-list .tag { flex-shrink: 0; }
+@media (max-width: 650px) { .class-directory-grid { grid-template-columns: 1fr; } .class-directory .page-heading { flex-direction: column; align-items: flex-start; } }

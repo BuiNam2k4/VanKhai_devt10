@@ -45,6 +45,31 @@ public class SchoolClassServiceImpl implements SchoolClassService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public SchoolClassPageResponse findForUser(Long userId, boolean includeTeaching, String keyword, String sortBy, int page, int size) {
+        getUser(userId);
+        var pageable = PaginationUtils.pageable(page, size, sortBy, CLASS_SORT_FIELDS);
+        var result = classRepository.searchForUser(userId, includeTeaching, search(keyword), pageable);
+        SchoolClassPageResponse response = new SchoolClassPageResponse();
+        response.setClasses(result.getContent().stream().map(ManagementMapper::toClassResponse).toList());
+        PaginationUtils.fill(response, page, size, result);
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserPageResponse findTeacherStudents(UserResponse actor, Long classId, String keyword, String sortBy, int page, int size) {
+        if (!actor.getRoles().contains(RoleName.ADMIN) && !actor.getRoles().contains(RoleName.TEACHER)) {
+            throw new AppException(ErrorCode.FORBIDDEN);
+        }
+        var schoolClass = getClass(classId);
+        if (!actor.getRoles().contains(RoleName.ADMIN) && !schoolClass.getTeacher().getId().equals(actor.getId())) {
+            throw new AppException(ErrorCode.FORBIDDEN);
+        }
+        return findStudents(classId, keyword, sortBy, page, size);
+    }
+
+    @Override
     @Transactional
     public SchoolClassResponse save(SchoolClassRequest request) {
         String code = normalizeCode(request.getCode());

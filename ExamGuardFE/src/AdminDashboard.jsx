@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
 import QuestionBank from './QuestionBank'
 import ExamManagement from './ExamManagement'
+import ClassDirectory from './ClassDirectory'
 
 const tabs = {
   users: { label: 'Người dùng', title: 'Quản lý người dùng', collection: 'users', sort: 'id:desc' },
@@ -23,6 +24,7 @@ export default function AdminDashboard({ token }) {
   const [editor, setEditor] = useState(null)
   const [teachers, setTeachers] = useState([])
   const [memberClass, setMemberClass] = useState(null)
+  const [userClasses, setUserClasses] = useState(null)
 
   const load = useCallback(async () => {
     if (tab === 'questions' || tab === 'exams') return
@@ -43,7 +45,7 @@ export default function AdminDashboard({ token }) {
   }, [token])
 
   function switchTab(next) {
-    setTab(next); setKeyword(''); setAppliedKeyword(''); setPage(1); setResult(null); setMemberClass(null)
+    setTab(next); setKeyword(''); setAppliedKeyword(''); setPage(1); setResult(null); setMemberClass(null); setUserClasses(null)
   }
 
   async function remove(item) {
@@ -70,11 +72,11 @@ export default function AdminDashboard({ token }) {
   return <div className="admin-layout">
     <aside className="sidebar"><div><span className="side-label">ĐIỀU HÀNH</span>{Object.entries(tabs).map(([key, value]) => <button key={key} className={tab === key ? 'active' : ''} onClick={() => switchTab(key)}><span className="nav-dot" />{value.label}</button>)}</div><p>Dữ liệu được phân trang và tìm kiếm trực tiếp từ máy chủ.</p></aside>
     <main className="workspace">
-      {tab === 'questions' ? <QuestionBank token={token} isAdmin /> : tab === 'exams' ? <ExamManagement token={token} isAdmin /> : memberClass ? <MembersPanel token={token} schoolClass={memberClass} onBack={() => { setMemberClass(null); load() }} /> : <>
+      {tab === 'questions' ? <QuestionBank token={token} isAdmin /> : tab === 'exams' ? <ExamManagement token={token} isAdmin /> : userClasses ? <><button className="back-button" onClick={() => setUserClasses(null)}>← Quay lại danh sách người dùng</button><ClassDirectory key={userClasses.id} token={token} path={`/admin/users/${userClasses.id}/classes`} title={`Lớp của ${userClasses.username}`} description={`${userClasses.fullName} · Các lớp đang tham gia hoặc phụ trách`} rosterBase="/admin/classes" /></> : memberClass ? <MembersPanel token={token} schoolClass={memberClass} onBack={() => { setMemberClass(null); load() }} /> : <>
         <div className="page-heading"><div><span className="eyebrow">QUẢN TRỊ HỌC VỤ</span><h1>{tabs[tab].title}</h1><p>{result ? `${result.totalElements} bản ghi` : 'Đang tải dữ liệu…'}</p></div><button className="primary" onClick={() => setEditor({ type: tab, item: null })}>+ Thêm mới</button></div>
         {notice && <div className={`notice ${notice.type}`} role="status">{notice.text}<button aria-label="Đóng" onClick={() => setNotice(null)}>×</button></div>}
         <form className="toolbar" onSubmit={event => { event.preventDefault(); setPage(1); setAppliedKeyword(keyword.trim()) }}><label><span>Tìm kiếm</span><input value={keyword} onChange={event => setKeyword(event.target.value)} placeholder={`Tìm trong ${tabs[tab].label.toLowerCase()}…`} /></label><button className="secondary" type="submit">Tìm kiếm</button>{appliedKeyword && <button className="text-button" type="button" onClick={() => { setKeyword(''); setAppliedKeyword(''); setPage(1) }}>Xóa bộ lọc</button>}</form>
-        <section className="table-card">{loading ? <div className="table-state">Đang tải…</div> : items.length === 0 ? <div className="table-state">Không có dữ liệu phù hợp.</div> : <DataTable type={tab} items={items} onEdit={item => setEditor({ type: tab, item })} onDelete={remove} onMembers={setMemberClass} />}</section>
+        <section className="table-card">{loading ? <div className="table-state">Đang tải…</div> : items.length === 0 ? <div className="table-state">Không có dữ liệu phù hợp.</div> : <DataTable type={tab} items={items} onEdit={item => setEditor({ type: tab, item })} onDelete={remove} onMembers={setMemberClass} onClasses={setUserClasses} />}</section>
         {result && <Pagination page={page} totalPages={result.totalPages} onChange={setPage} />}
       </>}
     </main>
@@ -82,8 +84,8 @@ export default function AdminDashboard({ token }) {
   </div>
 }
 
-function DataTable({ type, items, onEdit, onDelete, onMembers }) {
-  if (type === 'users') return <table><thead><tr><th>Người dùng</th><th>Vai trò</th><th>Trạng thái</th><th /></tr></thead><tbody>{items.map(item => <tr key={item.id}><td><strong>{item.fullName}</strong><small>{item.username} · {item.email}</small></td><td>{item.roles.map(role => <span className="tag" key={role}>{roleLabels[role]}</span>)}</td><td><span className={`status ${item.enabled ? 'enabled' : 'disabled'}`}>{item.enabled ? 'Hoạt động' : 'Đã khóa'}</span></td><td className="actions"><button onClick={() => onEdit(item)}>Sửa</button><button className="danger" onClick={() => onDelete(item)}>Xóa</button></td></tr>)}</tbody></table>
+function DataTable({ type, items, onEdit, onDelete, onMembers, onClasses }) {
+  if (type === 'users') return <table><thead><tr><th>Người dùng</th><th>Vai trò</th><th>Trạng thái</th><th /></tr></thead><tbody>{items.map(item => <tr key={item.id}><td><strong>{item.fullName}</strong><small>{item.username} · {item.email}</small></td><td>{item.roles.map(role => <span className="tag" key={role}>{roleLabels[role]}</span>)}</td><td><span className={`status ${item.enabled ? 'enabled' : 'disabled'}`}>{item.enabled ? 'Hoạt động' : 'Đã khóa'}</span></td><td className="actions"><button onClick={() => onClasses(item)}>Xem lớp</button><button onClick={() => onEdit(item)}>Sửa</button><button className="danger" onClick={() => onDelete(item)}>Xóa</button></td></tr>)}</tbody></table>
   if (type === 'subjects') return <table><thead><tr><th>Mã môn</th><th>Tên môn học</th><th>Mô tả</th><th /></tr></thead><tbody>{items.map(item => <tr key={item.id}><td><span className="code">{item.code}</span></td><td><strong>{item.name}</strong></td><td className="description">{item.description || '—'}</td><td className="actions"><button onClick={() => onEdit(item)}>Sửa</button><button className="danger" onClick={() => onDelete(item)}>Xóa</button></td></tr>)}</tbody></table>
   return <table><thead><tr><th>Lớp học</th><th>Giảng viên</th><th>Sinh viên</th><th /></tr></thead><tbody>{items.map(item => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.code}</small></td><td>{item.teacherName}</td><td>{item.studentCount}</td><td className="actions"><button onClick={() => onMembers(item)}>Sinh viên</button><button onClick={() => onEdit(item)}>Sửa</button><button className="danger" onClick={() => onDelete(item)}>Xóa</button></td></tr>)}</tbody></table>
 }
