@@ -32,7 +32,15 @@ Profile chạy `db/sample-data.sql` rồi `db/sample-exam-data.sql`. Có thể c
 
 Ví dụ sinh viên: `demo_student01`, `demo_student02`, …, `demo_student20`. Đây là 1 admin, 3 giảng viên và 20 sinh viên. Script chỉ tạo tài khoản còn thiếu, không đặt lại mật khẩu tài khoản đã được bạn đổi.
 
-## Xem tài khoản thuộc lớp nào
+## Cài đặt tài khoản cá nhân
+
+Sau khi đăng nhập, chọn **Cài đặt tài khoản** ở góc trên bên phải. Admin, teacher và student đều có thể sửa **Họ và tên, Tên đăng nhập, Email** của chính mình; tên đăng nhập/email không được trùng tài khoản khác. Thông tin mới cập nhật ngay trên giao diện. Dùng tên đăng nhập mới cho lần đăng nhập sau.
+
+Phần **Đổi mật khẩu** yêu cầu mật khẩu hiện tại, mật khẩu mới và xác nhận. Đổi thành công sẽ yêu cầu đăng nhập lại và vô hiệu hóa các token cũ, kể cả khi admin đặt lại mật khẩu. Vai trò và trạng thái tài khoản vẫn quản lý tại **Admin → Người dùng**. Khi cập nhật phiên bản xác thực này, các token phát hành trước đó không còn hợp lệ; đăng nhập lại một lần, mật khẩu tài khoản hiện có không bị thay đổi.
+
+Xem [API và kiểm thử cài đặt tài khoản](docs/account-settings.md).
+
+## Tra cứu lớp của tài khoản
 
 - **Admin:** vào **Người dùng**, tìm tên đăng nhập rồi chọn **Xem lớp**. Danh sách hiển thị các lớp tài khoản đang tham gia hoặc phụ trách; chọn **Xem sinh viên** để xem tên đăng nhập trong lớp. Thêm/xóa thành viên vẫn thực hiện tại **Lớp học → Sinh viên**.
 - **Teacher:** vào **Lớp phụ trách → Xem sinh viên**, tìm theo tên đăng nhập, họ tên hoặc email. Chỉ xem được sinh viên trong các lớp mình phụ trách.
@@ -73,3 +81,11 @@ Sinh viên đăng nhập vào màn hình **Bài thi của tôi**, chỉ thấy �
 Sinh viên có thể **Bắt đầu thi** hoặc **Tiếp tục thi**. Backend kiểm tra quyền, lớp, lịch, trạng thái và lượt còn lại, cấp ExamSession cùng ảnh chụp đề trong một transaction. Thời hạn là min(bắt đầu + thời lượng, giờ đóng đề). Gửi lại yêu cầu trên cùng thiết bị hoặc tải lại trang giữ nguyên phiên, thứ tự câu/đáp án và hạn thi. Bộ đếm dựa vào giờ máy chủ và thời gian đơn điệu của trình duyệt, không dựa vào đồng hồ máy khách. Hết hạn hiển thị 00:00 và phiên không được gia hạn; tự nộp/chấm điểm thuộc Task 12, lưu đáp án thuộc Task 11.
 
 Xem [hướng dẫn phiên thi và bộ đếm giờ](docs/exam-session-timer.md) và [collection Postman Task 10](docs/postman/exam-session-timer.postman_collection.json) để chạy thử API. Một bộ mẫu đã có phiên từ trước có thể thuộc deviceId cũ; để thử luồng mới, giảng viên công bố một đề thực hành còn nháp với lịch đang mở rồi sinh viên thuộc lớp được giao bắt đầu lượt.
+
+## Task 11
+
+Màn hình phiên thi đã cho chọn/bỏ chọn đáp án trắc nghiệm và nhập tự luận, **Lưu ngay**, tự lưu sau 1,5 giây ngừng nhập và kiểm tra mỗi 10 giây. Reload/tiếp tục giữ đáp án đã lưu; mất mạng giữ phần chưa lưu tại trình duyệt và thử lại. Giao diện phân biệt rõ bản nháp với đáp án đã được máy chủ xác nhận, giữ phần nhập mới khi request đang chờ và cho giải quyết xung đột giữa các tab.
+
+Backend có GET/PUT StudentAnswer, kiểm tra quyền/lớp/thiết bị, câu hỏi/đáp án thuộc ảnh chụp và hạn thi. Khóa phiên cùng version từng đáp án chặn ghi đè bằng request cũ và bảo đảm batch lưu toàn bộ hoặc không lưu. Không đổi thời hạn hoặc chấm điểm từ client. Hết giờ khóa nhập/lưu; nộp/chấm thuộc Task 12. Xem [hướng dẫn lưu đáp án và autosave](docs/answer-autosave.md).
+
+Đợt kiểm thử ngày 13/10/2026 đã để sẵn đề **Thực hành Task 11 - Lưu đáp án**, 10 câu, 45 phút, giao cho DEMO-CLS-01 và DEMO-CLS-22, mở đến 14:24 ngày 14/10/2026 (UTC+7). Đăng nhập `demo_student01` hoặc `demo_student02`, mật khẩu `Demo@123`, để bắt đầu lượt mới. Sau ngày đóng này, teacher cần tạo/công bố đề mới để test; không đổi hạn phiên cũ đã hết giờ.

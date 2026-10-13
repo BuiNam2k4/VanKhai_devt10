@@ -11,6 +11,9 @@ public interface ExamSessionRepository extends JpaRepository<ExamSession, Long> 
 
     @Query("select s from ExamSession s where s.id = :id and s.student.id = :studentId")
     Optional<ExamSession> findOwned(@Param("id") Long id, @Param("studentId") Long studentId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from ExamSession s where s.id = :id and s.student.id = :studentId")
+    Optional<ExamSession> findOwnedForUpdate(@Param("id") Long id, @Param("studentId") Long studentId);
     @Query("select s.exam.id as examId, count(s) as attemptsUsed from ExamSession s where s.student.id = :studentId and s.exam.id in :ids group by s.exam.id")
     List<AttemptCount> countStudentAttempts(@Param("studentId") Long studentId, @Param("ids") Collection<Long> ids);
 

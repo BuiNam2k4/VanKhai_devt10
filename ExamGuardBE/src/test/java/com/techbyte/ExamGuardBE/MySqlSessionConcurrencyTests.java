@@ -59,6 +59,7 @@ class MySqlSessionConcurrencyTests {
 
     @AfterEach void cleanupOnlyCommittedFixture() {
         transaction.executeWithoutResult(status -> {
+            jdbc.update("delete a from student_answers a join session_questions q on q.id=a.session_question_id where q.exam_id=?", exam);
             jdbc.update("delete o from session_question_options o join session_questions q on q.id=o.session_question_id where q.exam_id=?", exam);
             jdbc.update("delete from session_questions where exam_id=?", exam); jdbc.update("delete from exam_sessions where exam_id=?", exam);
             jdbc.update("delete from exam_questions where exam_id=?", exam); jdbc.update("delete from exam_classes where exam_id=?", exam); jdbc.update("delete from exams where id=?", exam);
@@ -89,6 +90,50 @@ class MySqlSessionConcurrencyTests {
         assertThat(start("rollback-device-001").status()).isEqualTo(500);
         assertThat(jdbc.queryForObject("select count(*) from exam_sessions where exam_id=?", Integer.class, exam)).isZero();
         assertThat(jdbc.queryForObject("select count(*) from session_questions where exam_id=?", Integer.class, exam)).isZero();
+    }
+
+    @Test void simultaneousConflictingAnswersCreateOneRowAndRejectTheStaleWriter() throws Exception {
+        long id = start("answer-device-001").id();
+        var questionIds = jdbc.queryForList("select id from session_questions where session_id=? order by display_order", Long.class, id);
+        var optionIds = jdbc.queryForList("select id from session_question_options where session_question_id=? order by display_order", Long.class, questionIds.getFirst());
+        var results = simultaneousAnswers(id, answerItem(questionIds.getFirst(), optionIds.getFirst()), answerItem(questionIds.getFirst(), optionIds.getLast()));
+        assertThat(results).containsExactlyInAnyOrder(200, 409);
+        assertThat(jdbc.queryForObject("select count(*) from student_answers where session_question_id=?", Integer.class, questionIds.getFirst())).isEqualTo(1);
+    }
+
+    @Test void simultaneousIdenticalAnswersAreIdempotent() throws Exception {
+        long id = start("answer-device-001").id();
+        long q = jdbc.queryForList("select id from session_questions where session_id=? order by display_order", Long.class, id).getFirst();
+        long option = jdbc.queryForList("select id from session_question_options where session_question_id=? order by display_order", Long.class, q).getFirst();
+        assertThat(simultaneousAnswers(id, answerItem(q, option), answerItem(q, option))).containsExactly(200, 200);
+        assertThat(jdbc.queryForObject("select count(*) from student_answers where session_question_id=?", Integer.class, q)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select version from student_answers where session_question_id=?", Long.class, q)).isZero();
+    }
+
+    @Test void simultaneousAnswersToDifferentQuestionsBothPersist() throws Exception {
+        long id = start("answer-device-001").id();
+        var questions = jdbc.queryForList("select id from session_questions where session_id=? order by display_order", Long.class, id);
+        long first = questions.getFirst(); long second = questions.getLast();
+        long firstOption = jdbc.queryForList("select id from session_question_options where session_question_id=? order by display_order", Long.class, first).getFirst();
+        long secondOption = jdbc.queryForList("select id from session_question_options where session_question_id=? order by display_order", Long.class, second).getFirst();
+        assertThat(simultaneousAnswers(id, answerItem(first, firstOption), answerItem(second, secondOption))).containsExactly(200, 200);
+        assertThat(jdbc.queryForObject("select count(*) from student_answers a join session_questions q on q.id=a.session_question_id where q.session_id=?", Integer.class, id)).isEqualTo(2);
+    }
+
+    private List<Integer> simultaneousAnswers(long id, Map<String, Object> first, Map<String, Object> second) throws Exception {
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var gate = new CountDownLatch(1);
+            var a = pool.submit(() -> { gate.await(); return saveAnswer(id, first); });
+            var b = pool.submit(() -> { gate.await(); return saveAnswer(id, second); });
+            gate.countDown(); return List.of(a.get(30, TimeUnit.SECONDS), b.get(30, TimeUnit.SECONDS));
+        }
+    }
+    private Map<String, Object> answerItem(long question, long option) {
+        var item = new HashMap<String, Object>(); item.put("sessionQuestionId", question); item.put("selectedOptionId", option); item.put("version", null); return item;
+    }
+    private int saveAnswer(long id, Map<String, Object> item) throws Exception {
+        return mvc.perform(put("/api/student/sessions/{id}/answers", id).header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("deviceId", "answer-device-001", "answers", List.of(item))))).andReturn().getResponse().getStatus();
     }
 
     private List<Result> simultaneous(String first, String second) throws Exception {

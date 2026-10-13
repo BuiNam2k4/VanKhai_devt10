@@ -67,7 +67,7 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, UserRepository userRepository,
-                                    ObjectMapper objectMapper) throws Exception {
+                                    ObjectMapper objectMapper, CredentialStamp credentialStamp) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> {})
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -79,6 +79,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/teacher/**").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers("/api/student/**").hasRole("STUDENT")
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/auth/me", "/api/auth/password").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((req, res, ex) -> writeError(res, objectMapper, ErrorCode.UNAUTHENTICATED))
@@ -94,6 +95,7 @@ public class SecurityConfig {
                                 throw new InvalidBearerTokenException("Invalid subject");
                             }
                             var user = userRepository.findWithRolesById(id).filter(item -> item.isEnabled())
+                                    .filter(item -> credentialStamp.matches(token, item))
                                     .orElseThrow(() -> new InvalidBearerTokenException("Account unavailable"));
                             UserResponse principal = ManagementMapper.toUserResponse(user);
                             var authorities = principal.getRoles().stream()

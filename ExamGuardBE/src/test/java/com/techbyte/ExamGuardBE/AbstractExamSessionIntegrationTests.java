@@ -33,6 +33,7 @@ abstract class AbstractExamSessionIntegrationTests {
     @Autowired ExamSessionRepository sessions;
     @Autowired SessionQuestionRepository snapshots;
     @Autowired SessionQuestionOptionRepository snapshotOptions;
+    @Autowired StudentAnswerRepository studentAnswers;
     @Autowired PasswordEncoder passwords;
     @Autowired EntityManager em;
     @MockitoBean Clock clock;
@@ -155,6 +156,107 @@ abstract class AbstractExamSessionIntegrationTests {
         broken.setExpiresAt(now().plusMinutes(45)); broken.setMaxScore(BigDecimal.ONE); broken.setDeviceId(device); sessions.saveAndFlush(broken);
         restore(token, broken.getId(), device, 409); start(token, device, 409);
         assertThat(snapshots.findBySessionIdOrderByDisplayOrderAsc(broken.getId())).isEmpty();
+    }
+
+    @Test void answersSaveBothTypesRestoreAfterReloadAndAllowClearingWithoutGradingLeaks() throws Exception {
+        var created = start(token, device, 201); long id = created.get("id").asLong();
+        var mc = savedQuestion(created, "SINGLE_CHOICE"); var essayQuestion = savedQuestion(created, "ESSAY");
+        assertThat(readAnswers(token, id, device, 200).get("answers").size()).isZero();
+        var saved = saveAnswers(token, id, device, List.of(answer(mc, mc.get("options").get(0).get("id").asLong(), null, null),
+                answer(essayQuestion, null, "Cơ sở dữ liệu giữ nguyên dấu tiếng Việt và\nngắt dòng.", null)), 200);
+        assertThat(saved.get("answers").size()).isEqualTo(2);
+        assertThat(saved.toString()).doesNotContain("correct", "sourceOption", "awardedPoints", "passwordHash", "score");
+        assertThat(restore(token, id, device, 200).get("answers")).isEqualTo(saved.get("answers"));
+        assertThat(studentAnswers.findForSession(id)).allSatisfy(item -> assertThat(item.getAwardedPoints()).isNull());
+        when(clock.instant()).thenReturn(fixed.plusSeconds(10));
+        var cleared = saveAnswers(token, id, device, List.of(answer(mc, null, null, 0L), answer(essayQuestion, null, "", 0L)), 200);
+        assertThat(cleared.get("answers").size()).isEqualTo(2);
+        for (var item : cleared.get("answers")) {
+            assertThat(item.get("selectedOptionId").isNull()).isTrue(); assertThat(item.get("answerText").isNull()).isTrue();
+            assertThat(item.get("version").asLong()).isEqualTo(1); assertThat(item.get("savedAt").asText()).isEqualTo("2030-01-01T02:00:10Z");
+        }
+        assertThat(sessions.findById(id).orElseThrow().getStatus()).isEqualTo(SessionStatus.IN_PROGRESS);
+    }
+
+    @Test void staleAnswerWritesAreRejectedAndIdenticalRetriesDoNotChangeSavedTimeOrVersion() throws Exception {
+        var created = start(token, device, 201); long id = created.get("id").asLong(); var mc = savedQuestion(created, "SINGLE_CHOICE");
+        long first = mc.get("options").get(0).get("id").asLong(); long second = mc.get("options").get(1).get("id").asLong();
+        var initial = saveAnswers(token, id, device, List.of(answer(mc, first, null, null)), 200);
+        when(clock.instant()).thenReturn(fixed.plusSeconds(5));
+        assertThat(saveAnswers(token, id, device, List.of(answer(mc, first, null, null)), 200).get("answers")).isEqualTo(initial.get("answers"));
+        var changed = saveAnswers(token, id, device, List.of(answer(mc, second, null, 0L)), 200);
+        saveAnswers(token, id, device, List.of(answer(mc, first, null, 0L)), 409);
+        saveAnswers(token, id, device, List.of(answer(savedQuestion(created, "ESSAY"), null, "Must roll back", null), answer(mc, first, null, 0L)), 409);
+        assertThat(saveAnswers(token, id, device, List.of(answer(mc, second, null, 0L)), 200).get("answers")).isEqualTo(changed.get("answers"));
+        assertThat(readAnswers(token, id, device, 200).get("answers")).isEqualTo(changed.get("answers"));
+        assertThat(studentAnswers.findForSession(id)).hasSize(1);
+    }
+
+    @Test void answerBatchRejectsMixedFormatsForeignSnapshotIdsAndDuplicatesAtomically() throws Exception {
+        question(QuestionType.SINGLE_CHOICE, 3, "1.00"); em.flush();
+        var created = start(token, device, 201); long id = created.get("id").asLong();
+        var mc = savedQuestion(created, "SINGLE_CHOICE"); var essayQuestion = savedQuestion(created, "ESSAY");
+        long option = mc.get("options").get(0).get("id").asLong(); var valid = answer(mc, option, null, null);
+        saveAnswers(token, id, device, List.of(valid, answer(essayQuestion, option, null, null)), 400);
+        saveAnswers(token, id, device, List.of(answer(mc, option, "not allowed", null)), 400);
+        saveAnswers(token, id, device, List.of(answer(mc, Long.MAX_VALUE, null, null)), 400);
+        saveAnswers(token, id, device, List.of(valid, valid), 400);
+        var foreign = new HashMap<>(valid); foreign.put("sessionQuestionId", Long.MAX_VALUE);
+        saveAnswers(token, id, device, List.of(valid, foreign), 400);
+        for (var question : created.get("questions")) if (question.get("type").asText().equals("SINGLE_CHOICE") && !question.get("id").equals(mc.get("id"))) {
+            saveAnswers(token, id, device, List.of(answer(mc, question.get("options").get(0).get("id").asLong(), null, null)), 400);
+        }
+        assertThat(studentAnswers.findForSession(id)).isEmpty();
+    }
+
+    @Test void answerOwnershipRoleMembershipDeviceAndDeadlineAreEnforcedOnReadAndWrite() throws Exception {
+        var created = start(token, device, 201); long id = created.get("id").asLong(); var mc = savedQuestion(created, "SINGLE_CHOICE");
+        var valid = List.of(answer(mc, mc.get("options").get(0).get("id").asLong(), null, null));
+        readAnswers(otherToken, id, device, 404); saveAnswers(otherToken, id, device, valid, 404);
+        readAnswers(teacherToken, id, device, 403); saveAnswers(teacherToken, id, device, valid, 403);
+        readAnswers(adminToken, id, device, 403); saveAnswers(adminToken, id, device, valid, 403);
+        readAnswers(token, id, "wrong-device-001", 409); saveAnswers(token, id, "wrong-device-001", valid, 409);
+        schoolClass.getStudents().clear(); em.flush(); readAnswers(token, id, device, 404); saveAnswers(token, id, device, valid, 404);
+        schoolClass.getStudents().add(student); exam.setStatus(ExamStatus.CLOSED); em.flush();
+        saveAnswers(token, id, device, valid, 200); // Closing a paper does not end an existing live attempt.
+        when(clock.instant()).thenReturn(fixed.plusSeconds(2700));
+        saveAnswers(token, id, device, List.of(answer(mc, null, null, 0L)), 409);
+        assertThat(readAnswers(token, id, device, 200).get("canSave").asBoolean()).isFalse();
+        assertThat(studentAnswers.findForSession(id).getFirst().getSelectedOption()).isNotNull();
+    }
+
+    @Test void completedAttemptCannotWriteAndInvalidAnswerPayloadsCannotChangeServerMetadata() throws Exception {
+        var created = start(token, device, 201); long id = created.get("id").asLong(); var q = savedQuestion(created, "ESSAY");
+        var forged = answer(q, null, "Valid text", null); forged.put("awardedPoints", 999); forged.put("savedAt", "2099-01-01T00:00:00Z");
+        var result = saveAnswers(token, id, device, List.of(forged), 200);
+        assertThat(result.get("answers").get(0).get("savedAt").asText()).isEqualTo("2030-01-01T02:00:00Z");
+        assertThat(studentAnswers.findForSession(id).getFirst().getAwardedPoints()).isNull();
+        saveAnswers(token, id, device, List.of(answer(q, null, "x".repeat(10001), 0L)), 400);
+        saveAnswers(token, id, device, List.of(answer(q, null, "Changed", -1L)), 400);
+        saveAnswers(token, id, device, List.of(), 400);
+        saveAnswers(token, id, "bad", List.of(answer(q, null, "Changed", 0L)), 400);
+        complete(id); saveAnswers(token, id, device, List.of(answer(q, null, "Changed", 0L)), 409);
+        assertThat(readAnswers(token, id, device, 200).get("answers")).isEqualTo(result.get("answers"));
+        mvc.perform(get("/api/student/sessions/{id}/answers", id).header("Authorization", bearer(token))).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/student/sessions/{id}/answers", id).param("deviceId", device)).andExpect(status().isUnauthorized());
+    }
+
+    private JsonNode savedQuestion(JsonNode paper, String type) {
+        for (var question : paper.get("questions")) if (question.get("type").asText().equals(type)) return question;
+        throw new AssertionError("Missing question type " + type);
+    }
+    private Map<String, Object> answer(JsonNode question, Long option, String text, Long version) {
+        var item = new HashMap<String, Object>(); item.put("sessionQuestionId", question.get("id").asLong()); item.put("selectedOptionId", option);
+        item.put("answerText", text); item.put("version", version); return item;
+    }
+    private JsonNode saveAnswers(String auth, long id, String deviceId, List<Map<String, Object>> items, int expected) throws Exception {
+        String body = mvc.perform(put("/api/student/sessions/{id}/answers", id).header("Authorization", bearer(auth))
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("deviceId", deviceId, "answers", items))))
+                .andExpect(status().is(expected)).andReturn().getResponse().getContentAsString(); return json.readTree(body).get("data");
+    }
+    private JsonNode readAnswers(String auth, long id, String deviceId, int expected) throws Exception {
+        String body = mvc.perform(get("/api/student/sessions/{id}/answers", id).header("Authorization", bearer(auth)).param("deviceId", deviceId))
+                .andExpect(status().is(expected)).andReturn().getResponse().getContentAsString(); return json.readTree(body).get("data");
     }
 
     private void complete(long id) { var session = sessions.findById(id).orElseThrow(); session.setStatus(SessionStatus.SUBMITTED); session.setSubmittedAt(now()); sessions.flush(); }

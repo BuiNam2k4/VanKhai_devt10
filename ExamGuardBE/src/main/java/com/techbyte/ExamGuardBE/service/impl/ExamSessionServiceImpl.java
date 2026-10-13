@@ -29,6 +29,7 @@ public class ExamSessionServiceImpl implements ExamSessionService {
     private final QuestionOptionRepository sourceOptions;
     private final SessionQuestionRepository questions;
     private final SessionQuestionOptionRepository options;
+    private final StudentAnswerRepository answers;
     private final ExamPaperFactory papers;
     private final ExamPaperSnapshotService snapshots;
     private final Clock clock;
@@ -91,7 +92,8 @@ public class ExamSessionServiceImpl implements ExamSessionService {
                 session.getAttemptNumber(), session.getStatus(), utc(session.getStartedAt()), utc(session.getExpiresAt()), utc(now),
                 canContinue ? ExamSessionTime.remainingSeconds(now, session.getExpiresAt()) : 0, expired, canContinue, session.getMaxScore(),
                 saved.stream().map(question -> new ExamSessionResponse.Question(question.getId(), question.getContent(), question.getType(), question.getPoints(), question.getDisplayOrder(),
-                    grouped.getOrDefault(question.getId(), List.of()).stream().map(option -> new ExamSessionResponse.Option(option.getId(), option.getContent(), option.getDisplayOrder())).toList())).toList());
+                    grouped.getOrDefault(question.getId(), List.of()).stream().map(option -> new ExamSessionResponse.Option(option.getId(), option.getContent(), option.getDisplayOrder())).toList())).toList(),
+                answers.findForSession(session.getId()).stream().map(StudentAnswersResponse::from).toList());
     }
     private LocalDateTime now() { return LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS); }
     private static OffsetDateTime utc(LocalDateTime time) { return time.atOffset(ZoneOffset.UTC); }

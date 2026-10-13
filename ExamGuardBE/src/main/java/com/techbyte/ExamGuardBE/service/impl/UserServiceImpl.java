@@ -69,7 +69,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse update(Long id, UserUpdateRequest request) {
-        User user = getUser(id);
+        User user = userRepository.findForUpdate(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         String username = normalizeUsername(request.getUsername());
         String email = normalizeEmail(request.getEmail());
         if (userRepository.existsByUsernameIgnoreCaseAndIdNot(username, id)

@@ -7,6 +7,7 @@ import com.techbyte.ExamGuardBE.enums.RoleName;
 import com.techbyte.ExamGuardBE.exception.*;
 import com.techbyte.ExamGuardBE.mapper.ManagementMapper;
 import com.techbyte.ExamGuardBE.repository.*;
+import com.techbyte.ExamGuardBE.config.CredentialStamp;
 import com.techbyte.ExamGuardBE.service.AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder jwtDecoder;
+    private final CredentialStamp credentialStamp;
 
     @Value("${jwt.issuer}")
     private String issuer;
@@ -78,7 +80,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         try {
             Jwt jwt = jwtDecoder.decode(request.getToken());
             long userId = Long.parseLong(jwt.getSubject());
-            boolean valid = userRepository.findWithRolesById(userId).filter(User::isEnabled).isPresent();
+            boolean valid = userRepository.findWithRolesById(userId).filter(User::isEnabled)
+                    .filter(user -> credentialStamp.matches(jwt, user)).isPresent();
             return IntrospectResponse.builder().valid(valid).build();
         } catch (JwtException | NumberFormatException exception) {
             return IntrospectResponse.builder().valid(false).build();
@@ -99,7 +102,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         UserResponse profile = ManagementMapper.toUserResponse(user);
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(issuer).subject(user.getId().toString()).issuedAt(now).expiresAt(expiresAt)
-                .id(UUID.randomUUID().toString()).claim("username", user.getUsername())
+                .id(UUID.randomUUID().toString()).claim("credentialStamp", credentialStamp.forUser(user)).claim("username", user.getUsername())
                 .claim("roles", profile.getRoles().stream().map(Enum::name).sorted().toList()).build();
         String token = jwtEncoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS512).build(), claims)).getTokenValue();

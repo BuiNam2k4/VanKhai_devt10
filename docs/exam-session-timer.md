@@ -43,7 +43,7 @@ URL #/session/{id} giữ tuyến phiên sau reload. Đồng bộ API cung cấp 
 
 Khôi phục khi tải lại, trở lại tab/cửa sổ, có lại kết nối và mỗi 30 giây. Tại 00:00, giao diện xác minh lại máy chủ và hiển thị hết giờ. Mất đồng bộ vẫn giữ đề đã tải và thời hạn đang đếm; không khẳng định dữ liệu đã lưu hoặc bài đã tự nộp. Đồng bộ bị từ chối do quyền/thiết bị thì ẩn đề. Rời màn hình phiên không dừng thời gian.
 
-Màn hình Task 10 hiển thị nội dung đề và bộ đếm. Chọn/nhập đáp án, tự lưu được triển khai ở Task 11; tự nộp và chấm ở Task 12. Không có nút nộp giả hoặc thông báo đã chấm khi chức năng chưa tồn tại.
+Màn hình Task 10 hiển thị nội dung đề và bộ đếm. Task 11 đã bổ sung chọn/nhập đáp án và tự lưu; response khôi phục có thêm `answers` với version/thời điểm lưu. Xem [hướng dẫn autosave](answer-autosave.md). Tự nộp và chấm thuộc Task 12, chưa có nút nộp giả hoặc thông báo đã chấm khi chức năng chưa tồn tại.
 
 ## Cách thử
 
