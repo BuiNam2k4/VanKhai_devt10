@@ -3,7 +3,7 @@ import { api, clearSession, getSession, saveSession } from './api'
 import AuthScreen from './AuthScreen'
 import AdminDashboard from './AdminDashboard'
 import TeacherDashboard from './TeacherDashboard'
-import StudentExams from './StudentExams'
+import StudentDashboard from './StudentDashboard'
 import './management.css'
 
 const roleLabels = { ADMIN: 'Quản trị viên', TEACHER: 'Giảng viên', STUDENT: 'Sinh viên' }
@@ -44,12 +44,12 @@ export default function ExamGuardApp() {
   return <div className="app-shell">
     <header className="topbar">
       <div className="brand"><span className="brand-mark">E</span><span>ExamGuard</span></div>
-      <div className="account"><div><strong>{user.fullName}</strong><small>{user.roles.map(role => roleLabels[role]).join(', ')}</small></div><button className="ghost" onClick={() => logout()}>Đăng xuất</button></div>
+      <div className="account"><div><strong>{user.fullName}</strong><small>{user.username} · {user.roles.map(role => roleLabels[role]).join(', ')}</small></div><button className="ghost" onClick={() => logout()}>Đăng xuất</button></div>
     </header>
     {user.roles.includes('ADMIN')
       ? <AdminDashboard token={session.token} />
       : user.roles.includes('TEACHER')
         ? <TeacherDashboard token={session.token} />
-      : <StudentExams token={session.token} />}
+      : <StudentDashboard token={session.token} />}
   </div>
 }

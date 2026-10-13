@@ -48,7 +48,7 @@ window lọc lịch mở/đóng, độc lập trạng thái đề và số lư�
 3. Chọn Xem bài thi để lấy lại thông tin và điều kiện hiện tại từ máy chủ. Màn hình danh sách tự làm mới mỗi phút, khi quay lại cửa sổ hoặc bấm Làm mới.
 4. Muốn thử bộ đề 10 câu: giảng viên chọn Đề thực hành 10 câu, đặt lịch còn hiệu lực và Công bố. Sinh viên thuộc lớp được giao mới thấy đề. Các đề demo cũ có thể đã hết lịch hoặc có phiên hết hạn từ ngày nhập dữ liệu.
 
-Task 10 sẽ triển khai endpoint bắt đầu/tiếp tục phiên, kiểm tra lại các điều kiện và cạnh tranh cấp lượt, rồi gọi dịch vụ ảnh chụp Task 8. Các cờ canStart/canResume ở Task 9 là thông tin tra cứu tại thời điểm response, không phải giấy phép bỏ qua kiểm tra ở bước tạo phiên.
+Task 10 đã triển khai endpoint bắt đầu/tiếp tục phiên, kiểm tra lại điều kiện và cạnh tranh cấp lượt, rồi gọi dịch vụ ảnh chụp Task 8. Các cờ canStart/canResume ở Task 9 là thông tin tra cứu tại thời điểm response, không phải giấy phép bỏ qua kiểm tra ở bước tạo phiên. Xem [hướng dẫn Task 10](exam-session-timer.md).
 
 ## Kiểm chứng
 

@@ -56,7 +56,7 @@ Preview trả nội dung, loại, điểm, thứ tự và nội dung các lựa 
 - Gọi lại trả các bản ghi đã lưu theo displayOrder, không đọc lại ngân hàng hoặc trộn lại. Việc sửa nội dung ngân hàng không làm đổi ảnh chụp đã tạo.
 - Lỗi tạo ảnh chụp làm transaction ngoài rollback cùng phiên. Dịch vụ trả entity nội bộ; API sinh viên của Task 10 cần map sang DTO loại bỏ correct và các dữ liệu chấm điểm trước khi trả ra ngoài.
 
-Task 8 chưa cung cấp endpoint sinh viên bắt đầu lượt thi; phần này thuộc Task 10. Hai bảng ảnh chụp đã có trong schema Task 4 nên không cần migration database.
+Endpoint sinh viên bắt đầu/khôi phục lượt thi đã được bổ sung trong [Task 10](exam-session-timer.md), gọi dịch vụ ảnh chụp này trong transaction cấp phiên. Hai bảng ảnh chụp đã có trong schema Task 4 nên không cần migration database.
 
 ## Kiểm chứng
 

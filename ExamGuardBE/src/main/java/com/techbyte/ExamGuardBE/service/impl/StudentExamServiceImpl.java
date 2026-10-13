@@ -23,12 +23,13 @@ public class StudentExamServiceImpl implements StudentExamService {
     private final ExamRepository exams;
     private final ExamSessionRepository sessions;
     private final ExamQuestionRepository questions;
+    private final Clock clock;
 
     @Override
     public StudentExamPageResponse findAll(UserResponse actor, String keyword, Long subjectId, ExamStatus status,
             ExamWindow window, String sortBy, int page, int size) {
         checkRole(actor);
-        var now = LocalDateTime.now(ZoneOffset.UTC);
+        var now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         var pageable = PaginationUtils.pageable(page, size, sortBy, SORT_FIELDS);
         String search = keyword == null || keyword.isBlank() ? "" : "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
         var result = exams.searchForStudent(actor.getId(), search, subjectId, status, window == null ? null : window.name(), now, pageable);
@@ -41,7 +42,7 @@ public class StudentExamServiceImpl implements StudentExamService {
     public StudentExamResponse findById(UserResponse actor, Long id) {
         checkRole(actor);
         var exam = exams.findVisibleToStudent(id, actor.getId()).orElseThrow(() -> new AppException(ErrorCode.EXAM_NOT_FOUND));
-        return map(actor.getId(), List.of(exam), LocalDateTime.now(ZoneOffset.UTC)).getFirst();
+        return map(actor.getId(), List.of(exam), LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)).getFirst();
     }
 
     @Override

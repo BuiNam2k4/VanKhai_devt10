@@ -1,5 +1,6 @@
 .exam-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; padding: 22px; background: #fff; border: 1px solid var(--line); border-radius: 13px; margin-bottom: 22px; }
 .exam-filter-actions { grid-column: 1 / -1; display: flex; gap: 10px; }
+.exam-heading-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .exam-table { overflow-x: auto; }
 .exam-table table { min-width: 900px; }
 .exam-table td:first-child { width: 28%; }

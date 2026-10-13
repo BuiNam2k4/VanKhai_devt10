@@ -20,6 +20,7 @@ export default function ExamManagement({ token, isAdmin = false }) {
   const [notice, setNotice] = useState(null)
   const [editor, setEditor] = useState(null)
   const [questionEditor, setQuestionEditor] = useState(null)
+  const [publication, setPublication] = useState(null)
   const [pending, setPending] = useState(false)
   const query = new URLSearchParams({ page, size: 10, ...Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== '')) }).toString()
   const requestKey = `${base}?${query}&refresh=${version}`
@@ -56,6 +57,13 @@ export default function ExamManagement({ token, isAdmin = false }) {
   }, [base, isAdmin, token, version])
 
   function refresh() { setVersion(value => value + 1) }
+  function showPublicationState(exam) {
+    setPublication(null)
+    setNotice({ type: exam.status === 'PUBLISHED' ? 'success' : 'error', text: exam.status === 'PUBLISHED'
+      ? `Bài thi “${exam.title}” đã được công bố. Danh sách đã cập nhật trạng thái mới nhất.`
+      : `Bài thi “${exam.title}” đã đóng, không thể công bố lại. Danh sách đã cập nhật trạng thái mới nhất.` })
+    refresh()
+  }
   async function open(item, readOnly) {
     try { setEditor({ item: await api(`${base}/exams/${item.id}`, { token }), readOnly }) }
     catch (error) { setNotice({ type: 'error', text: error.message }) }
@@ -71,22 +79,53 @@ export default function ExamManagement({ token, isAdmin = false }) {
       setQuestionEditor({ exam, data })
     } catch (error) { setNotice({ type: 'error', text: error.message }) }
   }
+  async function preparePublication(item) {
+    setPending(true)
+    try {
+      const exam = await api(`${base}/exams/${item.id}`, { token })
+      if (exam.status !== 'DRAFT') { showPublicationState(exam); return }
+      const scheduleError = !exam.startsAt || !exam.endsAt
+        ? 'Chưa có lịch thi. Hãy nhập thời gian mở và đóng, lưu bài thi rồi nhấn Công bố lại.'
+        : new Date(exam.endsAt) <= new Date(exam.startsAt) || new Date(exam.endsAt) <= new Date()
+          ? 'Lịch thi đã hết hạn hoặc không hợp lệ. Hãy đặt thời gian đóng sau thời gian mở và sau hiện tại, lưu rồi công bố lại.' : ''
+      if (scheduleError || !exam.classes.length) {
+        setNotice(null)
+        setEditor({ item: exam, readOnly: false, hint: scheduleError || 'Chưa giao lớp. Hãy chọn ít nhất một lớp, lưu bài thi rồi công bố lại.' })
+      } else if (!exam.questionCount) {
+        setNotice({ type: 'error', text: 'Chưa có câu hỏi. Chọn Câu hỏi để thêm câu và đặt điểm trước khi công bố.' })
+      } else {
+        setPublication({ item: exam, error: '' })
+      }
+    } catch (error) { setNotice({ type: 'error', text: error.message }) }
+    finally { setPending(false) }
+  }
   async function action(item, operation) {
-    const prompt = operation === 'delete' ? `Xóa bài thi nháp “${item.title}”?` : operation === 'publish'
-      ? `Công bố “${item.title}”? Sau khi công bố, cấu hình bài thi sẽ được khóa.` : `Đóng “${item.title}”? Sinh viên sẽ không được bắt đầu lượt mới.`
-    if (!window.confirm(prompt)) return
+    if (operation !== 'publish' && !window.confirm(operation === 'delete'
+      ? `Xóa bài thi nháp “${item.title}”?` : `Đóng “${item.title}”? Sinh viên sẽ không được bắt đầu lượt mới.`)) return
     setPending(true)
     try {
       await api(`${base}/exams/${item.id}${operation === 'delete' ? '' : `/${operation}`}`, { token, method: operation === 'delete' ? 'DELETE' : 'POST' })
+      if (operation === 'publish') setPublication(null)
       setNotice({ type: 'success', text: operation === 'delete' ? 'Đã xóa bài thi nháp.' : operation === 'publish' ? 'Đã công bố bài thi.' : 'Đã đóng bài thi.' })
       if (operation === 'delete' && result.exams.length === 1 && page > 1) setPage(page - 1)
       else refresh()
-    } catch (error) { setNotice({ type: 'error', text: error.message }) }
+    } catch (error) {
+      if (operation === 'publish') {
+        if (error.status === 409) {
+          try {
+            const latest = await api(`${base}/exams/${item.id}`, { token })
+            if (latest.status !== 'DRAFT') { showPublicationState(latest); return }
+          } catch { /* Keep the original publication error when refreshing is unavailable. */ }
+        }
+        setPublication({ item, error: error.message })
+      }
+      else setNotice({ type: 'error', text: error.message })
+    }
     finally { setPending(false) }
   }
 
   return <section className="exam-management">
-    <div className="page-heading"><div><span className="eyebrow">QUẢN LÝ VÀ CẤU HÌNH BÀI THI</span><h1>Quản lý bài thi</h1><p>{isAdmin ? 'Tất cả bài thi trong hệ thống' : 'Các bài thi do bạn phụ trách'}{result ? ` · ${result.totalElements} bài thi` : ''}</p></div><button className="primary" disabled={!catalog?.subjects.length || (isAdmin && !catalog?.teachers.length)} onClick={() => setEditor({ item: null, readOnly: false })}>+ Tạo bài thi</button></div>
+    <div className="page-heading"><div><span className="eyebrow">QUẢN LÝ VÀ CẤU HÌNH BÀI THI</span><h1>Quản lý bài thi</h1><p>{isAdmin ? 'Tất cả bài thi trong hệ thống' : 'Các bài thi do bạn phụ trách'}{result ? ` · ${result.totalElements} bài thi` : ''}</p></div><div className="exam-heading-actions"><button className="secondary" disabled={pending} onClick={refresh}>Làm mới</button><button className="primary" disabled={!catalog?.subjects.length || (isAdmin && !catalog?.teachers.length)} onClick={() => setEditor({ item: null, readOnly: false })}>+ Tạo bài thi</button></div></div>
     {notice && <div className={`notice ${notice.type}`} role="status">{notice.text}<button aria-label="Đóng thông báo" onClick={() => setNotice(null)}>×</button></div>}
     {catalogError && <div className="notice error" role="alert">Không tải được danh mục: {catalogError}<button onClick={refresh}>Thử lại</button></div>}
     {catalog && (!catalog.subjects.length || (isAdmin && !catalog.teachers.length)) && <p>Cần có môn học và giảng viên hoạt động để tạo bài thi.</p>}
@@ -104,12 +143,22 @@ export default function ExamManagement({ token, isAdmin = false }) {
           <td><small>Mở: {formatTime(item.startsAt)}</small><small>Đóng: {formatTime(item.endsAt)}</small><strong>{item.durationMinutes} phút / lượt</strong></td>
           <td><span className="tag">Tối đa {item.maxAttempts} lượt</span><small>{visibilityLabels[item.resultVisibility]}</small></td>
           {isAdmin && <td>{item.teacherName}</td>}<td><span className={`tag exam-status-${item.status.toLowerCase()}`}>{statuses[item.status]}</span></td>
-          <td className="actions"><button disabled={!catalog || pending} onClick={() => open(item, true)}>Xem</button><button disabled={pending} onClick={() => openQuestions(item)}>Câu hỏi</button>{item.status === 'DRAFT' && <><button disabled={!catalog || pending} onClick={() => open(item, false)}>Sửa</button><button disabled={pending} onClick={() => action(item, 'publish')}>Công bố</button><button className="danger" disabled={pending} onClick={() => action(item, 'delete')}>Xóa</button></>}{item.status === 'PUBLISHED' && <button className="danger" disabled={pending} onClick={() => action(item, 'close')}>Đóng</button>}</td>
+          <td className="actions"><button disabled={!catalog || pending} onClick={() => open(item, true)}>Xem</button><button disabled={pending} onClick={() => openQuestions(item)}>Câu hỏi</button>{item.status === 'DRAFT' && <><button disabled={!catalog || pending} onClick={() => open(item, false)}>Sửa</button><button disabled={!catalog || pending} onClick={() => preparePublication(item)}>Công bố</button><button className="danger" disabled={pending} onClick={() => action(item, 'delete')}>Xóa</button></>}{item.status === 'PUBLISHED' && <button className="danger" disabled={pending} onClick={() => action(item, 'close')}>Đóng</button>}</td>
         </tr>)}</tbody></table>}
     </div>
     {result && result.totalPages > 1 && <nav className="pagination" aria-label="Phân trang bài thi"><button disabled={page <= 1 || pending} onClick={() => setPage(page - 1)}>← Trước</button><span>Trang {page} / {result.totalPages}</span><button disabled={page >= result.totalPages || pending} onClick={() => setPage(page + 1)}>Sau →</button></nav>}
     {editor && catalog && <ExamEditor editor={editor} catalog={catalog} isAdmin={isAdmin} onClose={() => setEditor(null)} onSave={save} />}
     {questionEditor && <ExamQuestionsEditor {...questionEditor} token={token} isAdmin={isAdmin} onClose={() => setQuestionEditor(null)} onSaved={refresh} />}
+    {publication && <div className="modal-backdrop"><div className="modal exam-modal" role="dialog" aria-modal="true" aria-labelledby="exam-publish-title">
+      <div className="modal-head"><h2 id="exam-publish-title">Công bố bài thi</h2><button type="button" aria-label="Đóng xác nhận công bố" disabled={pending} onClick={() => setPublication(null)}>×</button></div>
+      <h3>{publication.item.title}</h3>
+      <p>{publication.item.questionCount} câu hỏi · {publication.item.durationMinutes} phút / lượt · Tối đa {publication.item.maxAttempts} lượt</p>
+      <p>Mở: {formatTime(publication.item.startsAt)}<br />Đóng: {formatTime(publication.item.endsAt)}</p>
+      <p>Lớp được giao: {publication.item.classes.map(value => value.code).join(', ')}</p>
+      <p>Sinh viên thuộc lớp được giao sẽ thấy bài thi và được bắt đầu trong lịch mở. Sau khi công bố, cấu hình và câu hỏi của bài thi được khóa.</p>
+      {publication.error && <div className="notice error" role="alert">{publication.error}</div>}
+      <div className="modal-actions"><button className="secondary" type="button" disabled={pending} onClick={() => setPublication(null)}>Hủy</button><button className="primary" type="button" disabled={pending} onClick={() => action(publication.item, 'publish')}>{pending ? 'Đang công bố…' : 'Xác nhận công bố'}</button></div>
+    </div></div>}
   </section>
 }
 
@@ -137,6 +186,7 @@ function ExamEditor({ editor, catalog, isAdmin, onClose, onSave }) {
 
   return <div className="modal-backdrop"><div className="modal exam-modal" role="dialog" aria-modal="true" aria-labelledby="exam-editor-title"><div className="modal-head"><div><span className="eyebrow">{readOnly ? 'CHI TIẾT' : item ? 'CẤU HÌNH BÀI NHÁP' : 'TẠO BÀI NHÁP'}</span><h2 id="exam-editor-title">{item ? `Bài thi #${item.id}` : 'Tạo bài thi'}</h2></div><button type="button" aria-label="Đóng cửa sổ bài thi" disabled={busy} onClick={onClose}>×</button></div>
     {item && <p><span className={`tag exam-status-${item.status.toLowerCase()}`}>{statuses[item.status]}</span> {item.questionCount} câu hỏi · Giảng viên: {item.teacherName}</p>}
+    {editor.hint && <div className="notice error" role="alert">{editor.hint}</div>}
     {error && <div className="notice error" role="alert">{error}</div>}{Object.entries(fields).map(([name, value]) => <p className="field-error" key={name}>{name}: {value}</p>)}
     <form onSubmit={submit}><fieldset disabled={busy || readOnly}>
       <label className="field"><span>Tiêu đề bài thi</span><input aria-label="Tiêu đề bài thi" name="title" defaultValue={item?.title || ''} required maxLength={200} autoFocus={!readOnly} /></label>

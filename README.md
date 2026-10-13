@@ -28,9 +28,17 @@ Profile chạy `db/sample-data.sql` rồi `db/sample-exam-data.sql`. Có thể c
 | --- | --- | --- | --- |
 | Admin (ADMIN) | `demo_admin01` | `Demo@123` | Quản lý người dùng, môn, lớp, toàn bộ câu hỏi và bài thi |
 | Giảng viên (TEACHER) | `demo_teacher01`, `demo_teacher02`, `demo_teacher03` | `Demo@123` | Quản lý ngân hàng câu hỏi và đề do mình phụ trách |
-| Sinh viên (STUDENT) | `demo_student01` đến `demo_student20` | `Demo@123` | Tra cứu bài thi được giao, tìm kiếm/phân trang và xem điều kiện tham gia; bắt đầu phiên thi ở Task 10 |
+| Sinh viên (STUDENT) | `demo_student01` đến `demo_student20` | `Demo@123` | Tra cứu bài thi, bắt đầu/tiếp tục phiên, xem đề đã trộn và thời gian còn lại |
 
 Ví dụ sinh viên: `demo_student01`, `demo_student02`, …, `demo_student20`. Đây là 1 admin, 3 giảng viên và 20 sinh viên. Script chỉ tạo tài khoản còn thiếu, không đặt lại mật khẩu tài khoản đã được bạn đổi.
+
+## Xem tài khoản thuộc lớp nào
+
+- **Admin:** vào **Người dùng**, tìm tên đăng nhập rồi chọn **Xem lớp**. Danh sách hiển thị các lớp tài khoản đang tham gia hoặc phụ trách; chọn **Xem sinh viên** để xem tên đăng nhập trong lớp. Thêm/xóa thành viên vẫn thực hiện tại **Lớp học → Sinh viên**.
+- **Teacher:** vào **Lớp phụ trách → Xem sinh viên**, tìm theo tên đăng nhập, họ tên hoặc email. Chỉ xem được sinh viên trong các lớp mình phụ trách.
+- **Student:** vào **Lớp của tôi** để xem mã lớp, tên lớp và giảng viên. Một tài khoản có thể tham gia nhiều lớp; không cần có đề đã công bố mới xem được lớp.
+
+Ví dụ dữ liệu mẫu: `demo_student01` thuộc `DEMO-CLS-01` và `DEMO-CLS-21`; `demo_student02` thuộc `DEMO-CLS-02` và `DEMO-CLS-22`. Đề Docker giao cho `DEMO-CLS-22` cần test bằng `demo_student02`. Xem [API và kiểm thử tra cứu lớp](docs/class-membership.md).
 
 ## Test đề có nhiều câu
 
@@ -58,4 +66,10 @@ Trong Quản lý bài thi, nút **Câu hỏi** mở màn hình chọn câu hỏi
 
 ## Task 9
 
-Sinh viên đăng nhập vào màn hình **Bài thi của tôi**, chỉ thấy đề PUBLISHED/CLOSED của lớp mình. Có tìm kiếm theo tên/môn/mô tả, lọc môn/trạng thái/lịch, sắp xếp, phân trang và xem chi tiết. Backend tính trạng thái tham gia theo UTC, lượt đã dùng và phiên đang làm; response không chứa đề, đáp án đúng hoặc điểm. Đề thực hành mới đang DRAFT nên chưa hiển thị cho sinh viên; giảng viên cần đặt lịch và công bố trước. Xem [hướng dẫn bài thi sinh viên](docs/student-exams.md). Task 10 bổ sung bắt đầu/tiếp tục phiên và bộ đếm giờ.
+Sinh viên đăng nhập vào màn hình **Bài thi của tôi**, chỉ thấy đề PUBLISHED/CLOSED của lớp mình. Có tìm kiếm theo tên/môn/mô tả, lọc môn/trạng thái/lịch, sắp xếp, phân trang và xem chi tiết. Backend tính trạng thái tham gia theo UTC, lượt đã dùng và phiên đang làm; response danh sách không chứa đề, đáp án đúng hoặc điểm. Đề thực hành mới đang DRAFT nên chưa hiển thị cho sinh viên; giảng viên cần đặt lịch và công bố trước. Xem [hướng dẫn bài thi sinh viên](docs/student-exams.md).
+
+## Task 10
+
+Sinh viên có thể **Bắt đầu thi** hoặc **Tiếp tục thi**. Backend kiểm tra quyền, lớp, lịch, trạng thái và lượt còn lại, cấp ExamSession cùng ảnh chụp đề trong một transaction. Thời hạn là min(bắt đầu + thời lượng, giờ đóng đề). Gửi lại yêu cầu trên cùng thiết bị hoặc tải lại trang giữ nguyên phiên, thứ tự câu/đáp án và hạn thi. Bộ đếm dựa vào giờ máy chủ và thời gian đơn điệu của trình duyệt, không dựa vào đồng hồ máy khách. Hết hạn hiển thị 00:00 và phiên không được gia hạn; tự nộp/chấm điểm thuộc Task 12, lưu đáp án thuộc Task 11.
+
+Xem [hướng dẫn phiên thi và bộ đếm giờ](docs/exam-session-timer.md) và [collection Postman Task 10](docs/postman/exam-session-timer.postman_collection.json) để chạy thử API. Một bộ mẫu đã có phiên từ trước có thể thuộc deviceId cũ; để thử luồng mới, giảng viên công bố một đề thực hành còn nháp với lịch đang mở rồi sinh viên thuộc lớp được giao bắt đầu lượt.
